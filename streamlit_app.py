@@ -3,7 +3,10 @@ from __future__ import annotations
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import torch
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -17,7 +20,7 @@ if env_path.exists():
 MODEL_ID: str = os.getenv("MODEL_ID", "CohereLabs/tiny-aya-water")
 DEFAULT_TEMPERATURE: float = float(os.getenv("DEFAULT_TEMPERATURE", "0.1"))
 DEFAULT_MAX_TOKENS: int = int(os.getenv("DEFAULT_MAX_TOKENS", "700"))
-DEVICE: str = os.getenv("DEVICE", "cpu")
+DEVICE: str = os.getenv("DEVICE", "auto")
 TOP_P: float = float(os.getenv("TOP_P", "0.95"))
 MAX_BATCH_ROWS: int = int(os.getenv("MAX_BATCH_ROWS", "100"))
 
@@ -76,6 +79,28 @@ LANGUAGES: list[str] = [
 # -- Pure functions -----------------------------------------------------------
 
 
+def detect_device() -> str:
+    """Return the best available device: cuda > mps > cpu."""
+    import torch
+
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def select_dtype(device: str) -> torch.dtype:
+    """Pick optimal dtype for the given device."""
+    import torch
+
+    if device == "cuda":
+        return torch.bfloat16
+    if device == "mps":
+        return torch.float16
+    return torch.float32
+
+
 def build_translation_prompt(
     text: str, source_lang: str, target_lang: str
 ) -> list[dict[str, str]]:
@@ -106,20 +131,23 @@ def translate_text(
     max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> str:
     """Translate text using the model and return the cleaned result."""
+    import torch
+
     messages = build_translation_prompt(text, source_lang, target_lang)
     input_ids = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
         add_generation_prompt=True,
         return_tensors="pt",
-    )
-    gen_tokens = model.generate(
-        input_ids,
-        max_new_tokens=max_tokens,
-        do_sample=True,
-        temperature=temperature,
-        top_p=TOP_P,
-    )
+    ).to(model.device)
+    with torch.inference_mode():
+        gen_tokens = model.generate(
+            input_ids,
+            max_new_tokens=max_tokens,
+            do_sample=True,
+            temperature=temperature,
+            top_p=TOP_P,
+        )
     # Decode only the newly generated tokens (skip the input prompt)
     output_tokens = gen_tokens[0][input_ids.shape[-1] :]
     decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
@@ -159,15 +187,14 @@ import streamlit as st  # noqa: E402
 @st.cache_resource
 def load_model() -> tuple:
     """Load tokenizer and model once, cached for the session lifetime."""
-    import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    device = DEVICE if DEVICE != "auto" else detect_device()
+    dtype = select_dtype(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    dtype = torch.bfloat16 if DEVICE != "cpu" else torch.float32
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, torch_dtype=dtype, device_map=DEVICE
-    )
-    return tokenizer, model
+    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, torch_dtype=dtype)
+    model = model.to(device).eval()
+    return tokenizer, model, device, dtype
 
 
 # -- Sidebar ------------------------------------------------------------------
@@ -181,7 +208,8 @@ max_tokens = st.sidebar.slider(
 )
 st.sidebar.markdown("---")
 st.sidebar.caption(
-    "Model: [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water)  \n"
+    "Model: [CohereLabs/tiny-aya-water]"
+    "(https://huggingface.co/CohereLabs/tiny-aya-water)  \n"
     "License: CC-BY-NC (non-commercial)"
 )
 
@@ -189,7 +217,8 @@ st.sidebar.caption(
 
 try:
     with st.spinner("Loading model... this may take a few minutes on first run."):
-        tokenizer, model = load_model()
+        tokenizer, model, device, dtype = load_model()
+    st.sidebar.info(f"Device: {device} | Dtype: {dtype}")
     model_loaded = True
 except Exception as e:
     st.error(f"Failed to load model: {e}")
@@ -263,7 +292,8 @@ if uploaded_file is not None:
             else:
                 if len(texts) >= MAX_BATCH_ROWS:
                     st.warning(
-                        f"File exceeds {MAX_BATCH_ROWS} rows. Only the first {MAX_BATCH_ROWS} will be translated."
+                        f"File exceeds {MAX_BATCH_ROWS} rows. "
+                        f"Only the first {MAX_BATCH_ROWS} will be translated."
                     )
                 translations: list[str] = []
                 progress = st.progress(0)

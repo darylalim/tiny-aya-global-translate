@@ -1,15 +1,97 @@
 from io import BytesIO
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import torch
 
+import streamlit_app
 from streamlit_app import (
     LANGUAGES,
     build_translation_prompt,
+    detect_device,
     extract_translation,
     parse_uploaded_file,
+    select_dtype,
     translate_text,
 )
+
+
+def test_detect_device_returns_valid_device() -> None:
+    result = detect_device()
+    assert result in ("cuda", "mps", "cpu")
+
+
+@patch("torch.cuda.is_available", return_value=True)
+def test_detect_device_prefers_cuda(mock_cuda: MagicMock) -> None:
+    assert detect_device() == "cuda"
+
+
+@patch("torch.backends.mps.is_available", return_value=True)
+@patch("torch.cuda.is_available", return_value=False)
+def test_detect_device_falls_back_to_mps(
+    mock_cuda: MagicMock, mock_mps: MagicMock
+) -> None:
+    assert detect_device() == "mps"
+
+
+@patch("torch.backends.mps.is_available", return_value=False)
+@patch("torch.cuda.is_available", return_value=False)
+def test_detect_device_falls_back_to_cpu(
+    mock_cuda: MagicMock, mock_mps: MagicMock
+) -> None:
+    assert detect_device() == "cpu"
+
+
+def test_select_dtype_cuda() -> None:
+    assert select_dtype("cuda") == torch.bfloat16
+
+
+def test_select_dtype_mps() -> None:
+    assert select_dtype("mps") == torch.float16
+
+
+def test_select_dtype_cpu() -> None:
+    assert select_dtype("cpu") == torch.float32
+
+
+def test_select_dtype_unknown_falls_back_to_float32() -> None:
+    assert select_dtype("xpu") == torch.float32
+
+
+@patch("streamlit_app.detect_device", return_value="mps")
+def test_load_model_uses_explicit_device_over_auto(
+    mock_detect: MagicMock,
+) -> None:
+    """When DEVICE is set explicitly, detect_device should not be called."""
+    original = streamlit_app.DEVICE
+    try:
+        streamlit_app.DEVICE = "cpu"
+        device = (
+            streamlit_app.DEVICE
+            if streamlit_app.DEVICE != "auto"
+            else detect_device()
+        )
+        assert device == "cpu"
+        mock_detect.assert_not_called()
+    finally:
+        streamlit_app.DEVICE = original
+
+
+@patch("streamlit_app.detect_device", return_value="mps")
+def test_load_model_calls_detect_when_auto(
+    mock_detect: MagicMock,
+) -> None:
+    """When DEVICE is 'auto', detect_device should be called."""
+    original = streamlit_app.DEVICE
+    try:
+        streamlit_app.DEVICE = "auto"
+        device = (
+            streamlit_app.DEVICE
+            if streamlit_app.DEVICE != "auto"
+            else detect_device()
+        )
+        assert device == "mps"
+    finally:
+        streamlit_app.DEVICE = original
 
 
 def test_languages_list_has_43_entries() -> None:
@@ -108,9 +190,33 @@ def test_parse_uploaded_file_csv_missing_column() -> None:
     assert result == []
 
 
+def test_translate_text_moves_input_to_model_device() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
+    mock_tokenizer.decode.return_value = "Bonjour"
+
+    translate_text(
+        text="Hello",
+        source_lang="English",
+        target_lang="French",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+    )
+
+    # generate should receive a tensor on the model's device
+    input_ids = mock_model.generate.call_args[0][0]
+    assert input_ids.device == torch.device("cpu")
+
+
 def test_translate_text_returns_string() -> None:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
 
     # apply_chat_template with return_tensors="pt" returns a tensor
     prompt_ids = torch.tensor([[1, 2, 3]])
@@ -137,6 +243,7 @@ def test_translate_text_returns_string() -> None:
 def test_translate_text_calls_generate_with_correct_params() -> None:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
 
     prompt_ids = torch.tensor([[1, 2, 3]])
     mock_tokenizer.apply_chat_template.return_value = prompt_ids
@@ -164,6 +271,7 @@ def test_translate_text_calls_generate_with_correct_params() -> None:
 def test_translate_text_passes_prompt_to_tokenizer() -> None:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
 
     prompt_ids = torch.tensor([[1, 2, 3]])
     mock_tokenizer.apply_chat_template.return_value = prompt_ids
