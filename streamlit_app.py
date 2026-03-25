@@ -193,3 +193,34 @@ try:
 except Exception as e:
     st.error(f"Failed to load model: {e}")
     model_loaded = False
+
+# -- Main page ----------------------------------------------------------------
+
+st.title("Tiny Aya Water Translator")
+st.markdown(
+    "Translate between 43 European and Asia-Pacific languages using "
+    "[CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) "
+    "running locally."
+)
+
+# Language selectors
+col1, col2 = st.columns(2)
+with col1:
+    source_lang = st.selectbox("Source Language", LANGUAGES, index=LANGUAGES.index("English"))
+with col2:
+    target_lang = st.selectbox("Target Language", LANGUAGES, index=LANGUAGES.index("French"))
+
+# Single text translation
+input_text = st.text_area("Text to translate", height=150)
+
+if st.button("Translate", disabled=not model_loaded):
+    if not input_text.strip():
+        st.warning("Please enter some text to translate.")
+    elif source_lang == target_lang:
+        st.warning("Source and target language are the same.")
+    else:
+        with st.spinner("Translating..."):
+            result = translate_text(
+                input_text, source_lang, target_lang, model, tokenizer, temperature, max_tokens
+            )
+        st.text_area("Translation", value=result, height=150, disabled=True)
