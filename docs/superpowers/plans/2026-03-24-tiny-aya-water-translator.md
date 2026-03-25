@@ -28,13 +28,15 @@
 **Files:**
 - Create: `pyproject.toml`
 - Create: `.env.example`
-- Create: `.gitignore` (update existing)
+- Create: `.gitignore`
 
 - [ ] **Step 1: Initialize uv project and add dependencies**
 
+Note: The repo already has a `README.md`. Use `--no-readme` to avoid overwriting it.
+
 ```bash
 cd "/Users/daryl-lim/Library/Mobile Documents/com~apple~CloudDocs/GitHub/tiny-aya-water-pipeline"
-uv init --name tiny-aya-water-translator
+uv init --name tiny-aya-water-translator --no-readme
 uv add streamlit transformers torch accelerate pandas python-dotenv
 uv add --dev ruff ty pytest
 ```
@@ -51,9 +53,9 @@ TOP_P=0.95
 MAX_BATCH_ROWS=100
 ```
 
-- [ ] **Step 3: Update `.gitignore`**
+- [ ] **Step 3: Create `.gitignore`**
 
-Add these entries if not already present:
+No `.gitignore` exists yet. Create it with:
 
 ```
 .env
@@ -272,7 +274,7 @@ def test_extract_translation_newlines() -> None:
 
 
 def test_extract_translation_preserves_inner_whitespace() -> None:
-    assert extract_translation("  Hello world  ") == "Hello world"
+    assert extract_translation("  Hello   world  ") == "Hello   world"
 ```
 
 - [ ] **Step 2: Run tests to verify new tests fail**
@@ -420,13 +422,14 @@ def test_translate_text_returns_string() -> None:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
-    # apply_chat_template returns token IDs
-    mock_tokenizer.apply_chat_template.return_value = [1, 2, 3]
+    # apply_chat_template with return_tensors="pt" returns a tensor
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
 
-    # model.generate returns a tensor
+    # model.generate returns prompt + generated tokens
     mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
 
-    # decode returns the "translated" text
+    # decode receives only the generated tokens (4, 5) and returns text
     mock_tokenizer.decode.return_value = "  Bonjour  "
 
     result = translate_text(
@@ -445,7 +448,8 @@ def test_translate_text_calls_generate_with_correct_params() -> None:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
-    mock_tokenizer.apply_chat_template.return_value = [1, 2, 3]
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
     mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
     mock_tokenizer.decode.return_value = "Bonjour"
 
@@ -471,8 +475,9 @@ def test_translate_text_passes_prompt_to_tokenizer() -> None:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
-    mock_tokenizer.apply_chat_template.return_value = [1, 2, 3]
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3]])
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
     mock_tokenizer.decode.return_value = "Hola"
 
     translate_text(
