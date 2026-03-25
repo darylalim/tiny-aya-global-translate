@@ -1,5 +1,22 @@
+# Environment
 .env
 .venv/
+.python-version
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+
+# OS
 .DS_Store
+
+# IDE / tooling
+.claude/
+.idea/
+.vscode/
+*.swp
+
+# Streamlit
+.streamlit/
+
