@@ -1,7 +1,7 @@
 [project]
 name = "tiny-aya-water-translator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Translation for European and Asia-Pacific languages with CohereLabs/tiny-aya-water"
 requires-python = ">=3.12"
 dependencies = [
     "accelerate>=1.13.0",
