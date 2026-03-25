@@ -1,2 +1,42 @@
-# tiny-aya-water-pipeline
-Translation for European and Asia Pacific languages with Cohere Labs Tiny Aya Water.
+# Tiny Aya Water Translator
+
+Translate between 43 European and Asia-Pacific languages using [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) running locally.
+
+## Features
+
+- Single text translation with language selection
+- Batch translation via CSV/TXT file upload with CSV download
+- Configurable generation parameters (temperature, max tokens)
+- Local inference — no API key required
+
+## Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+
+## Setup
+
+```bash
+uv sync
+cp .env.example .env  # edit as needed
+```
+
+## Usage
+
+```bash
+uv run streamlit run streamlit_app.py
+```
+
+First run downloads the model (~7 GB). Set `DEVICE=cuda` in `.env` for GPU acceleration.
+
+## Development
+
+```bash
+uv run pytest test_streamlit_app.py -v  # run tests
+uv run ruff check --fix .              # lint
+uv run ruff format .                   # format
+```
+
+## License
+
+The tiny-aya-water model is licensed [CC-BY-NC](https://cohere.com/c4ai-cc-by-nc-license) (non-commercial).
