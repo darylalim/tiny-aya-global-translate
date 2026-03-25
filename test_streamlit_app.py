@@ -66,9 +66,7 @@ def test_load_model_uses_explicit_device_over_auto(
     try:
         streamlit_app.DEVICE = "cpu"
         device = (
-            streamlit_app.DEVICE
-            if streamlit_app.DEVICE != "auto"
-            else detect_device()
+            streamlit_app.DEVICE if streamlit_app.DEVICE != "auto" else detect_device()
         )
         assert device == "cpu"
         mock_detect.assert_not_called()
@@ -85,9 +83,7 @@ def test_load_model_calls_detect_when_auto(
     try:
         streamlit_app.DEVICE = "auto"
         device = (
-            streamlit_app.DEVICE
-            if streamlit_app.DEVICE != "auto"
-            else detect_device()
+            streamlit_app.DEVICE if streamlit_app.DEVICE != "auto" else detect_device()
         )
         assert device == "mps"
     finally:
@@ -191,6 +187,7 @@ def test_parse_uploaded_file_csv_missing_column() -> None:
 
 
 def test_translate_text_moves_input_to_model_device() -> None:
+    """Plain tensor path: apply_chat_template returns a tensor directly."""
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
     mock_model.device = torch.device("cpu")
@@ -208,9 +205,39 @@ def test_translate_text_moves_input_to_model_device() -> None:
         tokenizer=mock_tokenizer,
     )
 
-    # generate should receive a tensor on the model's device
     input_ids = mock_model.generate.call_args[0][0]
     assert input_ids.device == torch.device("cpu")
+    assert mock_model.generate.call_args[1]["attention_mask"] is None
+
+
+def test_translate_text_handles_batch_encoding() -> None:
+    """BatchEncoding path: apply_chat_template returns a dict-like object."""
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    attention = torch.tensor([[1, 1, 1]])
+    batch_encoding = {"input_ids": prompt_ids, "attention_mask": attention}
+    mock_tokenizer.apply_chat_template.return_value = batch_encoding
+
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+    mock_tokenizer.decode.return_value = "Bonjour"
+
+    result = translate_text(
+        text="Hello",
+        source_lang="English",
+        target_lang="French",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+    )
+
+    assert result == "Bonjour"
+    input_ids = mock_model.generate.call_args[0][0]
+    assert input_ids.device == torch.device("cpu")
+    mask = mock_model.generate.call_args[1]["attention_mask"]
+    assert mask.device == torch.device("cpu")
+    assert torch.equal(mask, attention)
 
 
 def test_translate_text_returns_string() -> None:
@@ -218,7 +245,6 @@ def test_translate_text_returns_string() -> None:
     mock_model = MagicMock()
     mock_model.device = torch.device("cpu")
 
-    # apply_chat_template with return_tensors="pt" returns a tensor
     prompt_ids = torch.tensor([[1, 2, 3]])
     mock_tokenizer.apply_chat_template.return_value = prompt_ids
 

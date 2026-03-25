@@ -134,15 +134,22 @@ def translate_text(
     import torch
 
     messages = build_translation_prompt(text, source_lang, target_lang)
-    input_ids = tokenizer.apply_chat_template(
+    inputs = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
         add_generation_prompt=True,
         return_tensors="pt",
-    ).to(model.device)
+    )
+    if hasattr(inputs, "keys"):
+        input_ids = inputs["input_ids"].to(model.device)
+        attention_mask = inputs["attention_mask"].to(model.device)
+    else:
+        input_ids = inputs.to(model.device)
+        attention_mask = None
     with torch.inference_mode():
         gen_tokens = model.generate(
             input_ids,
+            attention_mask=attention_mask,
             max_new_tokens=max_tokens,
             do_sample=True,
             temperature=temperature,
