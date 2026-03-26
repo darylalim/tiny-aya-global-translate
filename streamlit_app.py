@@ -149,19 +149,16 @@ def build_summarization_prompt(
     ]
 
 
-def translate_text(
-    text: str,
-    source_lang: str,
-    target_lang: str,
+def _generate(
+    messages: list[dict[str, str]],
     model: Any,
     tokenizer: Any,
-    temperature: float = DEFAULT_TEMPERATURE,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
+    temperature: float,
+    max_tokens: int,
 ) -> str:
-    """Translate text using the model and return the cleaned result."""
+    """Tokenize, generate, decode, and clean model output."""
     import torch
 
-    messages = build_translation_prompt(text, source_lang, target_lang)
     inputs = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
@@ -189,6 +186,20 @@ def translate_text(
     return clean_model_output(decoded)
 
 
+def translate_text(
+    text: str,
+    source_lang: str,
+    target_lang: str,
+    model: Any,
+    tokenizer: Any,
+    temperature: float = DEFAULT_TEMPERATURE,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+) -> str:
+    """Translate text using the model and return the cleaned result."""
+    messages = build_translation_prompt(text, source_lang, target_lang)
+    return _generate(messages, model, tokenizer, temperature, max_tokens)
+
+
 def summarize_text(
     text: str,
     target_lang: str,
@@ -199,33 +210,8 @@ def summarize_text(
     max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> str:
     """Summarize text using the model and return the cleaned result."""
-    import torch
-
     messages = build_summarization_prompt(text, summary_length, target_lang)
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        tokenize=True,
-        add_generation_prompt=True,
-        return_tensors="pt",
-    )
-    if hasattr(inputs, "keys"):
-        input_ids = inputs["input_ids"].to(model.device)
-        attention_mask = inputs["attention_mask"].to(model.device)
-    else:
-        input_ids = inputs.to(model.device)
-        attention_mask = None
-    with torch.inference_mode():
-        gen_tokens = model.generate(
-            input_ids,
-            attention_mask=attention_mask,
-            max_new_tokens=max_tokens,
-            do_sample=True,
-            temperature=temperature,
-            top_p=TOP_P,
-        )
-    output_tokens = gen_tokens[0][input_ids.shape[-1] :]
-    decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
-    return clean_model_output(decoded)
+    return _generate(messages, model, tokenizer, temperature, max_tokens)
 
 
 def parse_uploaded_file(
@@ -377,15 +363,19 @@ if task == "Translate":
                     translations: list[str] = []
                     progress = st.progress(0)
                     for i, text in enumerate(texts):
-                        translated = translate_text(
-                            text,
-                            source_lang,
-                            target_lang,
-                            model,
-                            tokenizer,
-                            temperature,
-                            max_tokens,
-                        )
+                        try:
+                            translated = translate_text(
+                                text,
+                                source_lang,
+                                target_lang,
+                                model,
+                                tokenizer,
+                                temperature,
+                                max_tokens,
+                            )
+                        except Exception as exc:
+                            st.warning(f"Row {i + 1} failed: {type(exc).__name__}")
+                            translated = "[Error: translation failed]"
                         translations.append(translated)
                         progress.progress((i + 1) / len(texts))
 
@@ -471,9 +461,9 @@ else:
                             temperature,
                             max_tokens,
                         )
-                    except Exception:
-                        st.warning(f"Row {i + 1} failed to summarize.")
-                        summary = "[Error: generation failed]"
+                    except Exception as exc:
+                        st.warning(f"Row {i + 1} failed: {type(exc).__name__}")
+                        summary = "[Error: summarization failed]"
                     summaries.append(summary)
                     progress.progress((i + 1) / len(texts))
 

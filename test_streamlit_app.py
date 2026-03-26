@@ -18,6 +18,8 @@ from streamlit_app import (
     translate_text,
 )
 
+# -- detect_device ------------------------------------------------------------
+
 
 def test_detect_device_returns_valid_device() -> None:
     result = detect_device()
@@ -45,6 +47,9 @@ def test_detect_device_falls_back_to_cpu(
     assert detect_device() == "cpu"
 
 
+# -- select_dtype --------------------------------------------------------------
+
+
 def test_select_dtype_cuda() -> None:
     assert select_dtype("cuda") == torch.bfloat16
 
@@ -59,6 +64,9 @@ def test_select_dtype_cpu() -> None:
 
 def test_select_dtype_unknown_falls_back_to_float32() -> None:
     assert select_dtype("xpu") == torch.float32
+
+
+# -- load_model device logic ---------------------------------------------------
 
 
 @patch("streamlit_app.detect_device", return_value="mps")
@@ -94,6 +102,9 @@ def test_load_model_calls_detect_when_auto(
         streamlit_app.DEVICE = original
 
 
+# -- LANGUAGES -----------------------------------------------------------------
+
+
 def test_languages_list_has_43_entries() -> None:
     assert len(LANGUAGES) == 43
 
@@ -104,6 +115,9 @@ def test_languages_list_contains_english() -> None:
 
 def test_languages_list_contains_japanese() -> None:
     assert "Japanese" in LANGUAGES
+
+
+# -- build_translation_prompt --------------------------------------------------
 
 
 def test_build_translation_prompt_returns_single_message() -> None:
@@ -132,6 +146,9 @@ def test_build_translation_prompt_instruction() -> None:
     assert "Output only the translation" in content
 
 
+# -- clean_model_output --------------------------------------------------------
+
+
 def test_clean_model_output_strips_whitespace() -> None:
     assert clean_model_output("  Hello world  ") == "Hello world"
 
@@ -146,6 +163,9 @@ def test_clean_model_output_newlines() -> None:
 
 def test_clean_model_output_preserves_inner_whitespace() -> None:
     assert clean_model_output("  Hello   world  ") == "Hello   world"
+
+
+# -- get_summary_config --------------------------------------------------------
 
 
 def test_get_summary_config_short() -> None:
@@ -169,46 +189,41 @@ def test_get_summary_config_invalid_raises() -> None:
         get_summary_config("Extra Long")
 
 
-def test_parse_uploaded_file_csv_default_column() -> None:
-    csv_content = b"text,other\nhello,1\nworld,2\n"
-    file = BytesIO(csv_content)
-    file.name = "test.csv"
-    result = parse_uploaded_file(file, column="text")
-    assert result == ["hello", "world"]
+# -- build_summarization_prompt ------------------------------------------------
 
 
-def test_parse_uploaded_file_txt() -> None:
-    txt_content = b"hello\nworld\n"
-    file = BytesIO(txt_content)
-    file.name = "test.txt"
-    result = parse_uploaded_file(file, column=None)
-    assert result == ["hello", "world"]
+def test_build_summarization_prompt_returns_single_message() -> None:
+    result = build_summarization_prompt("Some long text here.", "Short", "English")
+    assert len(result) == 1
+    assert result[0]["role"] == "user"
 
 
-def test_parse_uploaded_file_skips_empty_rows() -> None:
-    txt_content = b"hello\n\nworld\n\n"
-    file = BytesIO(txt_content)
-    file.name = "test.txt"
-    result = parse_uploaded_file(file, column=None)
-    assert result == ["hello", "world"]
+def test_build_summarization_prompt_contains_target_language() -> None:
+    result = build_summarization_prompt("Some text.", "Medium", "French")
+    content = result[0]["content"]
+    assert "French" in content
 
 
-def test_parse_uploaded_file_truncates_at_max_rows() -> None:
-    lines = "\n".join(f"line{i}" for i in range(200)) + "\n"
-    file = BytesIO(lines.encode("utf-8"))
-    file.name = "test.txt"
-    result = parse_uploaded_file(file, column=None, max_rows=100)
-    assert len(result) == 100
-    assert result[0] == "line0"
-    assert result[99] == "line99"
+def test_build_summarization_prompt_contains_input_text() -> None:
+    result = build_summarization_prompt("The quick brown fox.", "Short", "English")
+    content = result[0]["content"]
+    assert "The quick brown fox." in content
 
 
-def test_parse_uploaded_file_csv_missing_column() -> None:
-    csv_content = b"text,other\nhello,1\n"
-    file = BytesIO(csv_content)
-    file.name = "test.csv"
-    result = parse_uploaded_file(file, column="nonexistent")
-    assert result == []
+def test_build_summarization_prompt_includes_summarize_instruction() -> None:
+    result = build_summarization_prompt("Some text.", "Short", "English")
+    content = result[0]["content"]
+    assert "summar" in content.lower()
+
+
+def test_build_summarization_prompt_includes_length_wording() -> None:
+    result = build_summarization_prompt("Some text.", "Short", "English")
+    content = result[0]["content"]
+    assert "brief summary" in content
+    assert "1-2 sentences" in content
+
+
+# -- translate_text ------------------------------------------------------------
 
 
 def test_translate_text_moves_input_to_model_device() -> None:
@@ -311,12 +326,12 @@ def test_translate_text_calls_generate_with_correct_params() -> None:
         max_tokens=500,
     )
 
-    # Verify generate was called
     mock_model.generate.assert_called_once()
     call_kwargs = mock_model.generate.call_args[1]
     assert call_kwargs["max_new_tokens"] == 500
     assert call_kwargs["temperature"] == 0.3
     assert call_kwargs["do_sample"] is True
+    assert call_kwargs["top_p"] == streamlit_app.TOP_P
 
 
 def test_translate_text_passes_prompt_to_tokenizer() -> None:
@@ -339,7 +354,6 @@ def test_translate_text_passes_prompt_to_tokenizer() -> None:
         max_tokens=700,
     )
 
-    # Verify the prompt was built and passed to apply_chat_template
     call_args = mock_tokenizer.apply_chat_template.call_args
     messages = call_args[0][0]
     assert len(messages) == 1
@@ -348,35 +362,7 @@ def test_translate_text_passes_prompt_to_tokenizer() -> None:
     assert "Hello" in messages[0]["content"]
 
 
-def test_build_summarization_prompt_returns_single_message() -> None:
-    result = build_summarization_prompt("Some long text here.", "Short", "English")
-    assert len(result) == 1
-    assert result[0]["role"] == "user"
-
-
-def test_build_summarization_prompt_contains_target_language() -> None:
-    result = build_summarization_prompt("Some text.", "Medium", "French")
-    content = result[0]["content"]
-    assert "French" in content
-
-
-def test_build_summarization_prompt_contains_input_text() -> None:
-    result = build_summarization_prompt("The quick brown fox.", "Short", "English")
-    content = result[0]["content"]
-    assert "The quick brown fox." in content
-
-
-def test_build_summarization_prompt_includes_summarize_instruction() -> None:
-    result = build_summarization_prompt("Some text.", "Short", "English")
-    content = result[0]["content"]
-    assert "summar" in content.lower()
-
-
-def test_build_summarization_prompt_includes_length_wording() -> None:
-    result = build_summarization_prompt("Some text.", "Short", "English")
-    content = result[0]["content"]
-    assert "brief summary" in content
-    assert "1-2 sentences" in content
+# -- summarize_text ------------------------------------------------------------
 
 
 def test_summarize_text_plain_tensor_path() -> None:
@@ -485,3 +471,76 @@ def test_summarize_text_calls_generate_with_correct_params() -> None:
     assert call_kwargs["temperature"] == 0.3
     assert call_kwargs["do_sample"] is True
     assert call_kwargs["top_p"] == streamlit_app.TOP_P
+
+
+def test_summarize_text_passes_prompt_to_tokenizer() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
+    mock_tokenizer.decode.return_value = "Summary."
+
+    summarize_text(
+        text="Some long text.",
+        target_lang="French",
+        summary_length="Short",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.1,
+        max_tokens=700,
+    )
+
+    call_args = mock_tokenizer.apply_chat_template.call_args
+    messages = call_args[0][0]
+    assert len(messages) == 1
+    assert "French" in messages[0]["content"]
+    assert "Some long text." in messages[0]["content"]
+    assert "summar" in messages[0]["content"].lower()
+
+
+# -- parse_uploaded_file -------------------------------------------------------
+
+
+def test_parse_uploaded_file_csv_default_column() -> None:
+    csv_content = b"text,other\nhello,1\nworld,2\n"
+    file = BytesIO(csv_content)
+    file.name = "test.csv"
+    result = parse_uploaded_file(file, column="text")
+    assert result == ["hello", "world"]
+
+
+def test_parse_uploaded_file_txt() -> None:
+    txt_content = b"hello\nworld\n"
+    file = BytesIO(txt_content)
+    file.name = "test.txt"
+    result = parse_uploaded_file(file, column=None)
+    assert result == ["hello", "world"]
+
+
+def test_parse_uploaded_file_skips_empty_rows() -> None:
+    txt_content = b"hello\n\nworld\n\n"
+    file = BytesIO(txt_content)
+    file.name = "test.txt"
+    result = parse_uploaded_file(file, column=None)
+    assert result == ["hello", "world"]
+
+
+def test_parse_uploaded_file_truncates_at_max_rows() -> None:
+    lines = "\n".join(f"line{i}" for i in range(200)) + "\n"
+    file = BytesIO(lines.encode("utf-8"))
+    file.name = "test.txt"
+    result = parse_uploaded_file(file, column=None, max_rows=100)
+    assert len(result) == 100
+    assert result[0] == "line0"
+    assert result[99] == "line99"
+
+
+def test_parse_uploaded_file_csv_missing_column() -> None:
+    csv_content = b"text,other\nhello,1\n"
+    file = BytesIO(csv_content)
+    file.name = "test.csv"
+    result = parse_uploaded_file(file, column="nonexistent")
+    assert result == []
