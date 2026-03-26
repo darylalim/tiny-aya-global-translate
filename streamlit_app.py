@@ -300,66 +300,155 @@ except Exception as e:
 
 # -- Main page ----------------------------------------------------------------
 
-st.title("Tiny Aya Water Translator")
+st.title("Tiny Aya Water")
 st.markdown(
-    "Translate between 43 European and Asia-Pacific languages using "
+    "Translate and summarize across 43 European and Asia-Pacific languages using "
     "[CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) "
     "running locally."
 )
 
-# Language selectors
-col1, col2 = st.columns(2)
-with col1:
-    source_lang = st.selectbox(
-        "Source Language", LANGUAGES, index=LANGUAGES.index("English")
-    )
-with col2:
-    target_lang = st.selectbox(
-        "Target Language", LANGUAGES, index=LANGUAGES.index("French")
-    )
+task = st.radio("Task", ["Translate", "Summarize"], horizontal=True)
 
-# Single text translation
-input_text = st.text_area("Text to translate", height=150)
-
-if st.button("Translate", disabled=not model_loaded):
-    if not input_text.strip():
-        st.warning("Please enter some text to translate.")
-    elif source_lang == target_lang:
-        st.warning("Source and target language are the same.")
-    else:
-        with st.spinner("Translating..."):
-            result = translate_text(
-                input_text,
-                source_lang,
-                target_lang,
-                model,
-                tokenizer,
-                temperature,
-                max_tokens,
-            )
-        st.text_area("Translation", value=result, height=150, disabled=True)
-
-# -- Batch Translation --------------------------------------------------------
-
-st.markdown("---")
-st.subheader("Batch Translation")
-
-uploaded_file = st.file_uploader("Upload CSV or TXT file", type=["csv", "txt"])
-
-if uploaded_file is not None:
-    # Column selector for CSV
-    column: str | None = None
-    if uploaded_file.name.endswith(".csv"):
-        preview_df = pd.read_csv(
-            uploaded_file, encoding="utf-8", encoding_errors="replace"
+if task == "Translate":
+    # Language selectors
+    col1, col2 = st.columns(2)
+    with col1:
+        source_lang = st.selectbox(
+            "Source Language", LANGUAGES, index=LANGUAGES.index("English")
         )
-        uploaded_file.seek(0)  # Reset for re-read
-        column = st.selectbox("Column to translate", preview_df.columns.tolist())
+    with col2:
+        target_lang = st.selectbox(
+            "Target Language", LANGUAGES, index=LANGUAGES.index("French")
+        )
 
-    if st.button("Translate File", disabled=not model_loaded):
-        if source_lang == target_lang:
+    # Single text translation
+    input_text = st.text_area("Text to translate", height=150)
+
+    if st.button("Translate", disabled=not model_loaded):
+        if not input_text.strip():
+            st.warning("Please enter some text to translate.")
+        elif source_lang == target_lang:
             st.warning("Source and target language are the same.")
         else:
+            with st.spinner("Translating..."):
+                result = translate_text(
+                    input_text,
+                    source_lang,
+                    target_lang,
+                    model,
+                    tokenizer,
+                    temperature,
+                    max_tokens,
+                )
+            st.text_area("Translation", value=result, height=150, disabled=True)
+
+    # -- Batch Translation --------------------------------------------------------
+
+    st.markdown("---")
+    st.subheader("Batch Translation")
+
+    uploaded_file = st.file_uploader(
+        "Upload CSV or TXT file", type=["csv", "txt"], key="translate_file"
+    )
+
+    if uploaded_file is not None:
+        # Column selector for CSV
+        column: str | None = None
+        if uploaded_file.name.endswith(".csv"):
+            preview_df = pd.read_csv(
+                uploaded_file, encoding="utf-8", encoding_errors="replace"
+            )
+            uploaded_file.seek(0)  # Reset for re-read
+            column = st.selectbox("Column to translate", preview_df.columns.tolist())
+
+        if st.button("Translate File", disabled=not model_loaded):
+            if source_lang == target_lang:
+                st.warning("Source and target language are the same.")
+            else:
+                texts = parse_uploaded_file(uploaded_file, column=column)
+                if not texts:
+                    st.warning("No text found in the uploaded file.")
+                else:
+                    if len(texts) >= MAX_BATCH_ROWS:
+                        st.warning(
+                            f"File exceeds {MAX_BATCH_ROWS} rows. "
+                            f"Only the first {MAX_BATCH_ROWS} will be translated."
+                        )
+                    translations: list[str] = []
+                    progress = st.progress(0)
+                    for i, text in enumerate(texts):
+                        translated = translate_text(
+                            text,
+                            source_lang,
+                            target_lang,
+                            model,
+                            tokenizer,
+                            temperature,
+                            max_tokens,
+                        )
+                        translations.append(translated)
+                        progress.progress((i + 1) / len(texts))
+
+                    result_df = pd.DataFrame(
+                        {"original": texts, "translated": translations}
+                    )
+                    st.dataframe(result_df)
+
+                    csv_output = result_df.to_csv(index=False)
+                    st.download_button(
+                        "Download CSV",
+                        csv_output,
+                        file_name="translations.csv",
+                        mime="text/csv",
+                    )
+
+else:
+    # Summarize mode
+    summary_length = st.radio(
+        "Summary Length", ["Short", "Medium", "Long"], horizontal=True
+    )
+    output_lang = st.selectbox(
+        "Output Language", LANGUAGES, index=LANGUAGES.index("English")
+    )
+
+    # Single text summarization
+    input_text = st.text_area("Text to summarize", height=150)
+
+    if st.button("Summarize", disabled=not model_loaded):
+        if not input_text.strip():
+            st.warning("Please enter some text to summarize.")
+        else:
+            with st.spinner("Summarizing..."):
+                result = summarize_text(
+                    input_text,
+                    output_lang,
+                    summary_length,
+                    model,
+                    tokenizer,
+                    temperature,
+                    max_tokens,
+                )
+            st.text_area("Summary", value=result, height=150, disabled=True)
+
+    # -- Batch Summarization ------------------------------------------------------
+
+    st.markdown("---")
+    st.subheader("Batch Summarization")
+
+    uploaded_file = st.file_uploader(
+        "Upload CSV or TXT file", type=["csv", "txt"], key="summarize_file"
+    )
+
+    if uploaded_file is not None:
+        column: str | None = None
+        if uploaded_file.name.endswith(".csv"):
+            preview_df = pd.read_csv(
+                uploaded_file, encoding="utf-8", encoding_errors="replace"
+            )
+            uploaded_file.seek(0)
+            column = st.selectbox("Column to summarize", preview_df.columns.tolist())
+
+        if st.button("Summarize File", disabled=not model_loaded):
             texts = parse_uploaded_file(uploaded_file, column=column)
             if not texts:
                 st.warning("No text found in the uploaded file.")
@@ -367,32 +456,34 @@ if uploaded_file is not None:
                 if len(texts) >= MAX_BATCH_ROWS:
                     st.warning(
                         f"File exceeds {MAX_BATCH_ROWS} rows. "
-                        f"Only the first {MAX_BATCH_ROWS} will be translated."
+                        f"Only the first {MAX_BATCH_ROWS} will be summarized."
                     )
-                translations: list[str] = []
+                summaries: list[str] = []
                 progress = st.progress(0)
                 for i, text in enumerate(texts):
-                    translated = translate_text(
-                        text,
-                        source_lang,
-                        target_lang,
-                        model,
-                        tokenizer,
-                        temperature,
-                        max_tokens,
-                    )
-                    translations.append(translated)
+                    try:
+                        summary = summarize_text(
+                            text,
+                            output_lang,
+                            summary_length,
+                            model,
+                            tokenizer,
+                            temperature,
+                            max_tokens,
+                        )
+                    except Exception:
+                        st.warning(f"Row {i + 1} failed to summarize.")
+                        summary = "[Error: generation failed]"
+                    summaries.append(summary)
                     progress.progress((i + 1) / len(texts))
 
-                result_df = pd.DataFrame(
-                    {"original": texts, "translated": translations}
-                )
+                result_df = pd.DataFrame({"original": texts, "summary": summaries})
                 st.dataframe(result_df)
 
                 csv_output = result_df.to_csv(index=False)
                 st.download_button(
                     "Download CSV",
                     csv_output,
-                    file_name="translations.csv",
+                    file_name="summaries.csv",
                     mime="text/csv",
                 )
