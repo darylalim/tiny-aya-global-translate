@@ -42,7 +42,7 @@ Constructs a chat message list for summarization. Calls `get_summary_config` to 
 
 ### `summarize_text(text: str, target_lang: str, summary_length: str, model: Any, tokenizer: Any, temperature: float, max_tokens: int) -> str`
 
-End-to-end summarization: builds prompt, tokenizes, generates, decodes. Mirrors `translate_text` internally — same `apply_chat_template` / `model.generate` / `tokenizer.decode` flow with the same BatchEncoding handling. Uses `clean_model_output` for output cleanup.
+End-to-end summarization: builds prompt, tokenizes, generates, decodes. Mirrors `translate_text` internally — same `apply_chat_template` / `model.generate` / `tokenizer.decode` flow with the same BatchEncoding handling. Uses `clean_model_output` for output cleanup. Uses the module-level `TOP_P` constant directly (same as `translate_text`), not passed as a parameter.
 
 ## UI Changes
 
@@ -59,12 +59,12 @@ Identical to the current UI. No changes.
 - **Summary length**: `st.radio("Summary Length", ["Short", "Medium", "Long"], horizontal=True)`
 - **Output language**: `st.selectbox("Output Language", LANGUAGES)` — the language the summary is written in. No source language selector (model infers input language).
 - **Text area**: for input text.
-- **Summarize button**: calls `summarize_text`, displays result in a disabled text area.
-- **Batch section**: file uploader (CSV/TXT), reuses `parse_uploaded_file`, iterates rows through `summarize_text` with progress bar, displays results table with columns `{"original": ..., "summary": ...}`, CSV download button (filename: `summaries.csv`).
+- **Summarize button**: wrapped in `st.spinner("Summarizing...")`, calls `summarize_text`, displays result in a disabled text area. No source/target same-language guard (unlike translation) — summarization always has a single output language, no source language selector.
+- **Batch section**: file uploader (CSV/TXT), reuses `parse_uploaded_file`, iterates rows through `summarize_text` with progress bar, displays results table with columns `{"original": ..., "summary": ...}`, CSV download button (filename: `summaries.csv`). Shows `st.warning` if the file exceeds `MAX_BATCH_ROWS` (matching translation batch behavior).
 
 ### Sidebar
 
-No changes. Temperature, max tokens slider, and model info remain shared across both tasks. The max tokens slider always defaults to `DEFAULT_MAX_TOKENS` regardless of task or summary length. Summary length controls the model's output through prompt wording only — the slider serves as a hard token cap the user can adjust manually. The `get_summary_config` default max tokens values are not wired to the slider.
+No changes. Temperature, max tokens slider, and model info remain shared across both tasks. The max tokens slider always defaults to `DEFAULT_MAX_TOKENS` regardless of task or summary length. Summary length controls the model's output through prompt wording only — the slider serves as a hard token cap the user can adjust manually.
 
 ## Error Handling
 
@@ -80,7 +80,7 @@ No new environment variables. Summary length defaults are hardcoded in `get_summ
 
 New tests in `test_streamlit_app.py`, following existing patterns. Existing `extract_translation` tests are renamed to `clean_model_output` (same assertions, covered in "Modifications to Existing Code" above).
 
-### `get_summary_config` (~4 tests)
+### `get_summary_config` (4 tests)
 
 - Returns correct prompt instruction for each length (short, medium, long).
 - Raises `ValueError` for invalid length.
@@ -98,7 +98,7 @@ New tests in `test_streamlit_app.py`, following existing patterns. Existing `ext
 - Plain tensor path: input moved to model device, attention mask is None.
 - BatchEncoding path: input_ids and attention_mask moved to model device.
 - Returns cleaned string output.
-- Passes correct generate parameters (temperature, max_tokens, do_sample).
+- Passes correct generate parameters (temperature, max_tokens, do_sample, top_p).
 
 ## Documentation Updates
 
