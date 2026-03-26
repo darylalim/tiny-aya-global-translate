@@ -116,7 +116,7 @@ def build_translation_prompt(
     ]
 
 
-def extract_translation(decoded_text: str) -> str:
+def clean_model_output(decoded_text: str) -> str:
     """Clean up decoded model output (skip_special_tokens=True already applied)."""
     return decoded_text.strip()
 
@@ -158,7 +158,7 @@ def translate_text(
     # Decode only the newly generated tokens (skip the input prompt)
     output_tokens = gen_tokens[0][input_ids.shape[-1] :]
     decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
-    return extract_translation(decoded)
+    return clean_model_output(decoded)
 
 
 def parse_uploaded_file(

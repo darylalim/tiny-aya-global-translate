@@ -7,8 +7,8 @@ import streamlit_app
 from streamlit_app import (
     LANGUAGES,
     build_translation_prompt,
+    clean_model_output,
     detect_device,
-    extract_translation,
     parse_uploaded_file,
     select_dtype,
     translate_text,
@@ -128,20 +128,20 @@ def test_build_translation_prompt_instruction() -> None:
     assert "Output only the translation" in content
 
 
-def test_extract_translation_strips_whitespace() -> None:
-    assert extract_translation("  Hello world  ") == "Hello world"
+def test_clean_model_output_strips_whitespace() -> None:
+    assert clean_model_output("  Hello world  ") == "Hello world"
 
 
-def test_extract_translation_empty_string() -> None:
-    assert extract_translation("") == ""
+def test_clean_model_output_empty_string() -> None:
+    assert clean_model_output("") == ""
 
 
-def test_extract_translation_newlines() -> None:
-    assert extract_translation("\n\nBonjour\n\n") == "Bonjour"
+def test_clean_model_output_newlines() -> None:
+    assert clean_model_output("\n\nBonjour\n\n") == "Bonjour"
 
 
-def test_extract_translation_preserves_inner_whitespace() -> None:
-    assert extract_translation("  Hello   world  ") == "Hello   world"
+def test_clean_model_output_preserves_inner_whitespace() -> None:
+    assert clean_model_output("  Hello   world  ") == "Hello   world"
 
 
 def test_parse_uploaded_file_csv_default_column() -> None:
