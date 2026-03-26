@@ -1,6 +1,7 @@
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
+import pytest
 import torch
 
 import streamlit_app
@@ -9,6 +10,7 @@ from streamlit_app import (
     build_translation_prompt,
     clean_model_output,
     detect_device,
+    get_summary_config,
     parse_uploaded_file,
     select_dtype,
     translate_text,
@@ -142,6 +144,27 @@ def test_clean_model_output_newlines() -> None:
 
 def test_clean_model_output_preserves_inner_whitespace() -> None:
     assert clean_model_output("  Hello   world  ") == "Hello   world"
+
+
+def test_get_summary_config_short() -> None:
+    result = get_summary_config("Short")
+    assert "brief summary" in result
+    assert "1-2 sentences" in result
+
+
+def test_get_summary_config_medium() -> None:
+    result = get_summary_config("Medium")
+    assert "short paragraph" in result
+
+
+def test_get_summary_config_long() -> None:
+    result = get_summary_config("Long")
+    assert "detailed summary" in result
+
+
+def test_get_summary_config_invalid_raises() -> None:
+    with pytest.raises(ValueError):
+        get_summary_config("Extra Long")
 
 
 def test_parse_uploaded_file_csv_default_column() -> None:

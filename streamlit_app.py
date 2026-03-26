@@ -121,6 +121,18 @@ def clean_model_output(decoded_text: str) -> str:
     return decoded_text.strip()
 
 
+def get_summary_config(length: str) -> str:
+    """Return the prompt instruction for the given summary length."""
+    configs = {
+        "Short": "Write a brief summary in 1-2 sentences",
+        "Medium": "Write a summary in a short paragraph",
+        "Long": "Write a detailed summary",
+    }
+    if length not in configs:
+        raise ValueError(f"Unknown summary length: {length!r}")
+    return configs[length]
+
+
 def translate_text(
     text: str,
     source_lang: str,
