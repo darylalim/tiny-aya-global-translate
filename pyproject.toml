@@ -1,5 +1,5 @@
 [project]
-name = "tiny-aya-water-translator"
+name = "tiny-aya-water"
 version = "0.1.0"
 description = "Translation and summarization for European and Asia-Pacific languages with CohereLabs/tiny-aya-water"
 readme = "README.md"

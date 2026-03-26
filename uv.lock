@@ -1453,7 +1453,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tiny-aya-water-translator"
+name = "tiny-aya-water"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
