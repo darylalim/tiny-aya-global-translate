@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import os
-from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import torch
 
-import pandas as pd
 from dotenv import load_dotenv
 
 # -- Config ------------------------------------------------------------------
@@ -22,7 +20,6 @@ DEFAULT_TEMPERATURE: float = float(os.getenv("DEFAULT_TEMPERATURE", "0.1"))
 DEFAULT_MAX_TOKENS: int = int(os.getenv("DEFAULT_MAX_TOKENS", "700"))
 DEVICE: str = os.getenv("DEVICE", "auto")
 TOP_P: float = float(os.getenv("TOP_P", "0.95"))
-MAX_BATCH_ROWS: int = int(os.getenv("MAX_BATCH_ROWS", "100"))
 
 # -- Languages ---------------------------------------------------------------
 # Water variant: optimized for European + Asia-Pacific languages.
@@ -214,33 +211,6 @@ def summarize_text(
     return _generate(messages, model, tokenizer, temperature, max_tokens)
 
 
-def parse_uploaded_file(
-    file: BytesIO, column: str | None, max_rows: int = MAX_BATCH_ROWS
-) -> list[str]:
-    """Extract a list of text strings from an uploaded CSV or TXT file."""
-    name: str = getattr(file, "name", "")
-    if name.endswith(".csv"):
-        try:
-            df = pd.read_csv(file, encoding="utf-8", encoding_errors="replace")
-        except Exception:
-            return []
-        if column and column in df.columns:
-            texts = df[column].astype(str).tolist()
-        elif column:
-            return []
-        else:
-            texts = df.iloc[:, 0].astype(str).tolist()
-    else:
-        raw = file.read()
-        if isinstance(raw, bytes):
-            raw = raw.decode("utf-8", errors="replace")
-        texts = raw.splitlines()
-
-    # Filter empty rows and truncate
-    texts = [t for t in texts if t.strip()]
-    return texts[:max_rows]
-
-
 import streamlit as st  # noqa: E402
 
 
@@ -280,6 +250,7 @@ try:
     model_loaded = True
 except Exception as e:
     st.error(f"Failed to load model: {e}")
+    tokenizer, model, device, dtype = None, None, None, None
     model_loaded = False
 
 # -- Tabs ---------------------------------------------------------------------
@@ -297,17 +268,17 @@ with translate_tab:
             "Target Language", LANGUAGES, index=LANGUAGES.index("French")
         )
 
-    input_text = st.text_area("Text to translate", height=150)
+    translate_input = st.text_area("Text to translate", height=150)
 
     if st.button("Translate", disabled=not model_loaded):
-        if not input_text.strip():
+        if not translate_input.strip():
             st.warning("Please enter some text to translate.")
         elif source_lang == target_lang:
             st.warning("Source and target language are the same.")
         else:
             with st.spinner("Translating..."):
                 result = translate_text(
-                    input_text,
+                    translate_input,
                     source_lang,
                     target_lang,
                     model,
@@ -326,15 +297,15 @@ with summarize_tab:
             "Output Language", LANGUAGES, index=LANGUAGES.index("English")
         )
 
-    input_text = st.text_area("Text to summarize", height=150)
+    summarize_input = st.text_area("Text to summarize", height=150)
 
     if st.button("Summarize", disabled=not model_loaded):
-        if not input_text.strip():
+        if not summarize_input.strip():
             st.warning("Please enter some text to summarize.")
         else:
             with st.spinner("Summarizing..."):
                 result = summarize_text(
-                    input_text,
+                    summarize_input,
                     output_lang,
                     summary_length,
                     model,
