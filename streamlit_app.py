@@ -294,6 +294,7 @@ with translate_tab:
             st.success(result)
 
 with summarize_tab:
+    st.markdown("**① Choose options**")
     col1, col2 = st.columns(2)
     with col1:
         summary_length = st.radio(
@@ -304,7 +305,13 @@ with summarize_tab:
             "Output Language", LANGUAGES, index=LANGUAGES.index("English")
         )
 
-    summarize_input = st.text_area("Text to summarize", height=150)
+    st.divider()
+    st.markdown("**② Enter text**")
+    summarize_input = st.text_area(
+        "Text to summarize",
+        placeholder="Paste an article, paragraph, or any text to summarize...",
+        height=150,
+    )
 
     if st.button("Summarize", disabled=not model_loaded):
         if not summarize_input.strip():
@@ -318,4 +325,6 @@ with summarize_tab:
                     model,
                     tokenizer,
                 )
-            st.text_area("Summary", value=result, height=150, disabled=True)
+            st.divider()
+            st.markdown("**③ Result**")
+            st.success(result)
