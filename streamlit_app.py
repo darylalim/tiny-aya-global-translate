@@ -314,15 +314,16 @@ with translate_tab:
             st.text_area("Translation", value=result, height=150, disabled=True)
 
 with summarize_tab:
-    # Summarize mode
-    summary_length = st.radio(
-        "Summary Length", ["Short", "Medium", "Long"], horizontal=True
-    )
-    output_lang = st.selectbox(
-        "Output Language", LANGUAGES, index=LANGUAGES.index("English")
-    )
+    col1, col2 = st.columns(2)
+    with col1:
+        summary_length = st.radio(
+            "Summary Length", ["Short", "Medium", "Long"], horizontal=True
+        )
+    with col2:
+        output_lang = st.selectbox(
+            "Output Language", LANGUAGES, index=LANGUAGES.index("English")
+        )
 
-    # Single text summarization
     input_text = st.text_area("Text to summarize", height=150)
 
     if st.button("Summarize", disabled=not model_loaded):
@@ -336,65 +337,5 @@ with summarize_tab:
                     summary_length,
                     model,
                     tokenizer,
-                    temperature,
-                    max_tokens,
                 )
             st.text_area("Summary", value=result, height=150, disabled=True)
-
-    # -- Batch Summarization ------------------------------------------------------
-
-    st.markdown("---")
-    st.subheader("Batch Summarization")
-
-    uploaded_file = st.file_uploader(
-        "Upload CSV or TXT file", type=["csv", "txt"], key="summarize_file"
-    )
-
-    if uploaded_file is not None:
-        column: str | None = None
-        if uploaded_file.name.endswith(".csv"):
-            preview_df = pd.read_csv(
-                uploaded_file, encoding="utf-8", encoding_errors="replace"
-            )
-            uploaded_file.seek(0)
-            column = st.selectbox("Column to summarize", preview_df.columns.tolist())
-
-        if st.button("Summarize File", disabled=not model_loaded):
-            texts = parse_uploaded_file(uploaded_file, column=column)
-            if not texts:
-                st.warning("No text found in the uploaded file.")
-            else:
-                if len(texts) >= MAX_BATCH_ROWS:
-                    st.warning(
-                        f"File exceeds {MAX_BATCH_ROWS} rows. "
-                        f"Only the first {MAX_BATCH_ROWS} will be summarized."
-                    )
-                summaries: list[str] = []
-                progress = st.progress(0)
-                for i, text in enumerate(texts):
-                    try:
-                        summary = summarize_text(
-                            text,
-                            output_lang,
-                            summary_length,
-                            model,
-                            tokenizer,
-                            temperature,
-                            max_tokens,
-                        )
-                    except Exception as exc:
-                        st.warning(f"Row {i + 1} failed: {type(exc).__name__}")
-                        summary = "[Error: summarization failed]"
-                    summaries.append(summary)
-                    progress.progress((i + 1) / len(texts))
-
-                result_df = pd.DataFrame({"original": texts, "summary": summaries})
-                st.dataframe(result_df)
-
-                csv_output = result_df.to_csv(index=False)
-                st.download_button(
-                    "Download CSV",
-                    csv_output,
-                    file_name="summaries.csv",
-                    mime="text/csv",
-                )
