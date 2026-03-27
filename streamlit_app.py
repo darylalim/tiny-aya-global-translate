@@ -271,9 +271,11 @@ st.markdown(
 try:
     with st.spinner("Loading model... this may take a few minutes on first run."):
         tokenizer, model, device, dtype = load_model()
+    model_url = "https://huggingface.co/CohereLabs/tiny-aya-water"
     st.caption(
-        f"Model: [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) "
-        f"| Device: {device} | Dtype: {dtype} | License: CC-BY-NC"
+        f"Model: [CohereLabs/tiny-aya-water]({model_url}) "
+        f"| Device: {device} | Dtype: {dtype} "
+        f"| License: CC-BY-NC"
     )
     model_loaded = True
 except Exception as e:
