@@ -72,6 +72,56 @@ LANGUAGES: list[str] = [
     "Burmese",
 ]
 
+LANGUAGE_GROUPS: dict[str, list[str]] = {
+    "European": [
+        "English",
+        "Dutch",
+        "French",
+        "Italian",
+        "Portuguese",
+        "Romanian",
+        "Spanish",
+        "Czech",
+        "Polish",
+        "Ukrainian",
+        "Russian",
+        "Greek",
+        "German",
+        "Danish",
+        "Swedish",
+        "Norwegian",
+        "Catalan",
+        "Galician",
+        "Welsh",
+        "Irish",
+        "Basque",
+        "Croatian",
+        "Latvian",
+        "Lithuanian",
+        "Slovak",
+        "Slovenian",
+        "Estonian",
+        "Finnish",
+        "Hungarian",
+        "Serbian",
+        "Bulgarian",
+    ],
+    "Asia-Pacific": [
+        "Chinese",
+        "Japanese",
+        "Korean",
+        "Tagalog",
+        "Malay",
+        "Indonesian",
+        "Javanese",
+        "Khmer",
+        "Thai",
+        "Lao",
+        "Vietnamese",
+        "Burmese",
+    ],
+}
+
 
 # -- Pure functions -----------------------------------------------------------
 
@@ -242,9 +292,7 @@ try:
     with st.spinner("Loading model... this may take a few minutes on first run."):
         tokenizer, model, _device, _dtype = load_model()
     model_url = "https://huggingface.co/CohereLabs/tiny-aya-water"
-    st.caption(
-        f"Powered by [tiny-aya-water]({model_url}) · 43 languages"
-    )
+    st.caption(f"Powered by [tiny-aya-water]({model_url}) · 43 languages")
     model_loaded = True
 except Exception as e:
     st.error(f"Failed to load model: {e}")

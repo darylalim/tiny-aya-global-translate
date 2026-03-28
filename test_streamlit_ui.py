@@ -66,8 +66,7 @@ def _rerun_with_mocks(app: AppTest) -> None:
 
 
 def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
-    """Return (mock_tokenizer, mock_model) configured for a successful _generate call.
-    """
+    """Return (mock_tokenizer, mock_model) configured for a successful _generate call."""
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
@@ -83,9 +82,7 @@ def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
     return mock_tokenizer, mock_model
 
 
-def _run_inference_test(
-    tab_index: int, input_text: str, decode_result: str
-) -> AppTest:
+def _run_inference_test(tab_index: int, input_text: str, decode_result: str) -> AppTest:
     """Build a fresh AppTest, enter text, click the action button, and return it."""
     mock_tokenizer, mock_model = _make_inference_mocks(decode_result)
     with (
