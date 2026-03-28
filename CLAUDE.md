@@ -12,6 +12,7 @@ Streamlit translation and summarization app using CohereLabs/tiny-aya-water (3.3
 
 - `streamlit_app.py` — single-file app: config, pure functions, Streamlit UI
 - `test_streamlit_app.py` — pytest unit tests for all pure functions
+- `test_streamlit_ui.py` — pytest UI tests for Streamlit interface
 - `.env.example` — configurable environment variables
 - `docs/` — design specs and implementation plans
 
@@ -19,7 +20,7 @@ Streamlit translation and summarization app using CohereLabs/tiny-aya-water (3.3
 
 ```bash
 uv run streamlit run streamlit_app.py   # run the app
-uv run pytest test_streamlit_app.py -v  # run tests
+uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
 uv run ruff check --fix .              # lint
 uv run ruff format .                   # format
 uv run ty check streamlit_app.py       # type check
