@@ -71,6 +71,8 @@ def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
+    # Mirrors load_model(): model.to(device).eval()
+    # If that chain changes, this mock chain must be updated to match.
     final_model = mock_model.to.return_value.eval.return_value
     final_model.device = torch.device("cpu")
     final_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
@@ -79,6 +81,29 @@ def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
     mock_tokenizer.decode.return_value = decode_result
 
     return mock_tokenizer, mock_model
+
+
+def _run_inference_test(
+    tab_index: int, input_text: str, decode_result: str
+) -> AppTest:
+    """Build a fresh AppTest, enter text, click the action button, and return it."""
+    mock_tokenizer, mock_model = _make_inference_mocks(decode_result)
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            return_value=mock_tokenizer,
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=mock_model,
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.tabs[tab_index].text_area[0].set_value(input_text)
+        at.tabs[tab_index].button[0].click()
+        at.run(timeout=60)
+    return at
 
 
 # -- Caption ------------------------------------------------------------------
@@ -142,49 +167,15 @@ def test_translate_tab_button_exists(app: AppTest) -> None:
 
 def test_translate_success_shows_result() -> None:
     """Clicking Translate with valid input shows the translated text."""
-    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        at = AppTest.from_file("streamlit_app.py")
-        at.run(timeout=60)
-        at.tabs[0].text_area[0].set_value("Hello")
-        at.tabs[0].button[0].click()
-        at.run(timeout=60)
-
-    tab = at.tabs[0]
-    success_values = [s.value for s in tab.success]
+    at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
+    success_values = [s.value for s in at.tabs[0].success]
     assert any("Bonjour" in str(v) for v in success_values)
 
 
 def test_translate_success_shows_result_label() -> None:
     """After a successful translation the '③ Result' label is shown."""
-    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        at = AppTest.from_file("streamlit_app.py")
-        at.run(timeout=60)
-        at.tabs[0].text_area[0].set_value("Hello")
-        at.tabs[0].button[0].click()
-        at.run(timeout=60)
-
-    tab = at.tabs[0]
-    markdown_values = [m.value for m in tab.markdown]
+    at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
+    markdown_values = [m.value for m in at.tabs[0].markdown]
     assert any("③ Result" in v for v in markdown_values)
 
 
@@ -275,49 +266,19 @@ def test_summarize_tab_button_exists(app: AppTest) -> None:
 
 def test_summarize_success_shows_result() -> None:
     """Clicking Summarize with valid input shows the summarized text."""
-    mock_tokenizer, mock_model = _make_inference_mocks("A brief summary.")
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        at = AppTest.from_file("streamlit_app.py")
-        at.run(timeout=60)
-        at.tabs[1].text_area[0].set_value("Some long text.")
-        at.tabs[1].button[0].click()
-        at.run(timeout=60)
-
-    tab = at.tabs[1]
-    success_values = [s.value for s in tab.success]
+    at = _run_inference_test(
+        tab_index=1, input_text="Some long text.", decode_result="A brief summary."
+    )
+    success_values = [s.value for s in at.tabs[1].success]
     assert any("A brief summary." in str(v) for v in success_values)
 
 
 def test_summarize_success_shows_result_label() -> None:
     """After a successful summarize the '③ Result' label is shown."""
-    mock_tokenizer, mock_model = _make_inference_mocks("A brief summary.")
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        at = AppTest.from_file("streamlit_app.py")
-        at.run(timeout=60)
-        at.tabs[1].text_area[0].set_value("Some long text.")
-        at.tabs[1].button[0].click()
-        at.run(timeout=60)
-
-    tab = at.tabs[1]
-    markdown_values = [m.value for m in tab.markdown]
+    at = _run_inference_test(
+        tab_index=1, input_text="Some long text.", decode_result="A brief summary."
+    )
+    markdown_values = [m.value for m in at.tabs[1].markdown]
     assert any("③ Result" in v for v in markdown_values)
 
 
@@ -345,3 +306,79 @@ def test_summarize_change_output_language(app: AppTest) -> None:
     _rerun_with_mocks(app)
 
     assert app.tabs[1].selectbox[0].value == "French"
+
+
+# -- Model load failure -------------------------------------------------------
+
+
+def test_model_load_failure_shows_error() -> None:
+    """When model loading raises an exception, st.error is shown."""
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            side_effect=RuntimeError("download failed"),
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=MagicMock(),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    error_values = [e.value for e in at.error]
+    assert any("Failed to load model" in str(v) for v in error_values)
+
+
+def test_model_load_failure_disables_translate_button() -> None:
+    """When model loading fails, the Translate button is disabled."""
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            side_effect=RuntimeError("download failed"),
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=MagicMock(),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    assert at.tabs[0].button[0].disabled
+
+
+def test_model_load_failure_disables_summarize_button() -> None:
+    """When model loading fails, the Summarize button is disabled."""
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            side_effect=RuntimeError("download failed"),
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=MagicMock(),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    assert at.tabs[1].button[0].disabled
+
+
+# -- Result divider -----------------------------------------------------------
+
+
+def test_translate_success_shows_result_divider() -> None:
+    """After a successful translation, a divider appears before the result."""
+    at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
+    # Initial load has 1 divider (between steps 1 and 2); after result there are 2
+    assert len(at.tabs[0].divider) >= 2
+
+
+def test_summarize_success_shows_result_divider() -> None:
+    """After a successful summarization, a divider appears before the result."""
+    at = _run_inference_test(
+        tab_index=1, input_text="Some long text.", decode_result="A brief summary."
+    )
+    assert len(at.tabs[1].divider) >= 2
