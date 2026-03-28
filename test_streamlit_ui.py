@@ -280,3 +280,45 @@ def test_translate_change_target_language(app: AppTest) -> None:
 
     tab = app.tabs[0]
     assert tab.selectbox[1].value == "Japanese"
+
+
+# -- Summarize tab: structure -------------------------------------------------
+
+
+def test_summarize_tab_has_choose_options_label(app: AppTest) -> None:
+    tab = app.tabs[1]
+    markdown_values = [m.value for m in tab.markdown]
+    assert any("① Choose options" in v for v in markdown_values)
+
+
+def test_summarize_tab_has_enter_text_label(app: AppTest) -> None:
+    tab = app.tabs[1]
+    markdown_values = [m.value for m in tab.markdown]
+    assert any("② Enter text" in v for v in markdown_values)
+
+
+def test_summarize_tab_has_divider(app: AppTest) -> None:
+    tab = app.tabs[1]
+    assert len(tab.divider) >= 1
+
+
+def test_summarize_tab_radio_default(app: AppTest) -> None:
+    tab = app.tabs[1]
+    assert tab.radio[0].value == "Short"
+
+
+def test_summarize_tab_output_language_default(app: AppTest) -> None:
+    tab = app.tabs[1]
+    assert tab.selectbox[0].value == "English"
+
+
+def test_summarize_tab_text_area_placeholder(app: AppTest) -> None:
+    tab = app.tabs[1]
+    text_area = tab.text_area[0]
+    expected = "Paste an article, paragraph, or any text to summarize..."
+    assert text_area.placeholder == expected
+
+
+def test_summarize_tab_button_exists(app: AppTest) -> None:
+    tab = app.tabs[1]
+    assert tab.button[0].label == "Summarize"
