@@ -247,13 +247,13 @@ def test_translate_change_target_language(app: AppTest) -> None:
 def test_summarize_tab_has_choose_options_label(app: AppTest) -> None:
     tab = app.tabs[1]
     markdown_values = [m.value for m in tab.markdown]
-    assert any("① Choose options" in v for v in markdown_values)
+    assert any("① Pick your options" in v for v in markdown_values)
 
 
 def test_summarize_tab_has_enter_text_label(app: AppTest) -> None:
     tab = app.tabs[1]
     markdown_values = [m.value for m in tab.markdown]
-    assert any("② Enter text" in v for v in markdown_values)
+    assert any("② Type or paste your text" in v for v in markdown_values)
 
 
 def test_summarize_tab_has_divider(app: AppTest) -> None:
@@ -274,13 +274,25 @@ def test_summarize_tab_output_language_default(app: AppTest) -> None:
 def test_summarize_tab_text_area_placeholder(app: AppTest) -> None:
     tab = app.tabs[1]
     text_area = tab.text_area[0]
-    expected = "Paste an article, paragraph, or any text to summarize..."
-    assert text_area.placeholder == expected
+    assert text_area.placeholder == "e.g. Paste an article, email, or paragraph here"
 
 
 def test_summarize_tab_button_exists(app: AppTest) -> None:
     tab = app.tabs[1]
     assert tab.button[0].label == "Summarize"
+
+
+def test_summarize_tab_output_region_default(app: AppTest) -> None:
+    tab = app.tabs[1]
+    assert tab.radio[1].value == "European"
+
+
+def test_summarize_output_region_filters_languages(app: AppTest) -> None:
+    """Switching output region to Asia-Pacific shows Asia-Pacific languages."""
+    app.tabs[1].radio[1].set_value("Asia-Pacific")
+    _rerun_with_mocks(app)
+
+    assert app.tabs[1].selectbox[0].value == "Chinese"
 
 
 # -- Summarize tab: interactions ----------------------------------------------
@@ -296,12 +308,12 @@ def test_summarize_success_shows_result() -> None:
 
 
 def test_summarize_success_shows_result_label() -> None:
-    """After a successful summarize the '③ Result' label is shown."""
+    """After a successful summarize the '③ Summary' label is shown."""
     at = _run_inference_test(
         tab_index=1, input_text="Some long text.", decode_result="A brief summary."
     )
     markdown_values = [m.value for m in at.tabs[1].markdown]
-    assert any("③ Result" in v for v in markdown_values)
+    assert any("③ Summary" in v for v in markdown_values)
 
 
 def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
@@ -311,7 +323,7 @@ def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
 
     tab = app.tabs[1]
     warning_values = [w.value for w in tab.warning]
-    assert any("Please enter some text" in str(v) for v in warning_values)
+    assert any("Please enter some text first" in str(v) for v in warning_values)
 
 
 def test_summarize_change_radio_to_long(app: AppTest) -> None:
