@@ -29,7 +29,8 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- UI uses `st.tabs` to switch between Translate and Summarize modes
+- UI uses `st.tabs` with a guided three-step flow (① Choose, ② Enter text, ③ Result) in each tab
+- UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - `clean_model_output` is the shared output cleanup function for both tasks
 - Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`

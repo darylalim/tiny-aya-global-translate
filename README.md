@@ -4,8 +4,9 @@ Translate and summarize across 43 European and Asia-Pacific languages using [Coh
 
 ## Features
 
-- Single text translation with language selection
-- Cross-lingual summarization with controllable length (short/medium/long)
+- Guided step-by-step UI for translation and summarization
+- 43 European and Asia-Pacific languages
+- Controllable summary length (short/medium/long)
 - Auto-detects CUDA, MPS, and CPU with optimal dtype per device
 - Local inference — no API key required
 
@@ -32,7 +33,7 @@ First run downloads the model (~7 GB). The app auto-detects the best available d
 ## Development
 
 ```bash
-uv run pytest test_streamlit_app.py -v  # run tests
+uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
 uv run ruff check --fix .              # lint
 uv run ruff format .                   # format
 uv run ty check streamlit_app.py       # type check
