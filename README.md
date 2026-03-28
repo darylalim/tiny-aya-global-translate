@@ -1,13 +1,13 @@
 # Tiny Aya Water
 
-Translate and summarize across 43 European and Asia-Pacific languages using [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) running locally.
+Translate and summarize text across 43 languages — all running privately on your computer. Powered by [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water).
 
 ## Features
 
 - Guided step-by-step UI for translation and summarization
-- 43 European and Asia-Pacific languages
+- 43 European and Asia-Pacific languages, filterable by region
 - Controllable summary length (short/medium/long)
-- Auto-detects CUDA, MPS, and CPU with optimal dtype per device
+- Auto-detects GPU (NVIDIA/Apple Silicon) or CPU for best performance
 - Local inference — no API key required
 
 ## Prerequisites
