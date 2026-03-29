@@ -114,7 +114,7 @@ def test_swap_flips_languages(app: AppTest) -> None:
     assert app.selectbox[1].value == "English"
 
 
-def test_swap_moves_output_to_input(app: AppTest) -> None:
+def test_swap_moves_output_to_input() -> None:
     """After translating, swap should move the output into the input field."""
     mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
     with (

@@ -239,7 +239,7 @@ def load_model() -> tuple:
 # -- Main page ----------------------------------------------------------------
 
 st.title("Tiny Aya Water")
-st.markdown("Translate and summarize text — running privately on your computer.")
+st.markdown("Translate text — running privately on your computer.")
 
 # -- Model loading ------------------------------------------------------------
 
@@ -252,63 +252,82 @@ except Exception as e:
     tokenizer, model = None, None
     model_loaded = False
 
-# -- Tabs ---------------------------------------------------------------------
+# -- Session state defaults ---------------------------------------------------
 
-translate_tab, summarize_tab = st.tabs(["Translate", "Summarize"])
+if "source_lang" not in st.session_state:
+    st.session_state.source_lang = "English"
+if "target_lang" not in st.session_state:
+    st.session_state.target_lang = "French"
+if "translate_input" not in st.session_state:
+    st.session_state.translate_input = ""
+if "translate_output" not in st.session_state:
+    st.session_state.translate_output = ""
 
-with translate_tab:
-    col1, col2, col3 = st.columns([5, 1, 5])
-    with col1:
-        source_lang = st.selectbox("From", LANGUAGES)
-    with col2:
-        st.html(
-            "<p style='text-align:center;font-size:1.2rem;padding-top:2rem'>&rarr;</p>"
-        )
-    with col3:
-        target_lang = st.selectbox("To", LANGUAGES, index=LANGUAGES.index("French"))
 
+def swap_languages() -> None:
+    """Swap source/target languages and move output into input."""
+    st.session_state.source_lang, st.session_state.target_lang = (
+        st.session_state.target_lang,
+        st.session_state.source_lang,
+    )
+    st.session_state.translate_input = st.session_state.translate_output
+    st.session_state.translate_output = ""
+
+
+# -- Language bar -------------------------------------------------------------
+
+col_from, col_swap, col_to = st.columns([5, 1, 5])
+with col_from:
+    source_lang = st.selectbox(
+        "From",
+        LANGUAGES,
+        key="source_lang",
+    )
+with col_swap:
+    st.html("<div style='padding-top:1.8rem'></div>")
+    st.button("⇄", key="⇄", on_click=swap_languages)
+with col_to:
+    target_lang = st.selectbox(
+        "To",
+        LANGUAGES,
+        key="target_lang",
+    )
+
+# -- Side-by-side text panels -------------------------------------------------
+
+col_input, col_output = st.columns(2)
+with col_input:
     translate_input = st.text_area(
-        "Text to translate",
+        "Input",
         placeholder="Type or paste your text here...",
-        height=150,
+        height=200,
+        key="translate_input",
+        label_visibility="collapsed",
+    )
+with col_output:
+    st.text_area(
+        "Output",
+        value=st.session_state.translate_output,
+        height=200,
+        disabled=True,
+        label_visibility="collapsed",
     )
 
-    if st.button("Translate", disabled=not model_loaded):
-        if not translate_input.strip():
-            st.warning("Please enter some text first.")
-        elif source_lang == target_lang:
-            st.warning("Please pick two different languages.")
-        else:
-            with st.spinner("Translating..."):
-                result = translate_text(
-                    translate_input,
-                    source_lang,
-                    target_lang,
-                    model,
-                    tokenizer,
-                )
-            st.success(result)
+# -- Translate button ---------------------------------------------------------
 
-with summarize_tab:
-    output_lang = st.selectbox("Output Language", LANGUAGES)
-
-    summarize_input = st.text_area(
-        "Text to summarize",
-        placeholder="Paste an article, email, or paragraph here...",
-        height=150,
-    )
-
-    if st.button("Summarize", disabled=not model_loaded):
-        if not summarize_input.strip():
-            st.warning("Please enter some text first.")
-        else:
-            summary_length = select_summary_length(summarize_input)
-            with st.spinner("Summarizing..."):
-                result = summarize_text(
-                    summarize_input,
-                    output_lang,
-                    summary_length,
-                    model,
-                    tokenizer,
-                )
-            st.success(result)
+if st.button("Translate", key="Translate", disabled=not model_loaded):
+    if not translate_input.strip():
+        st.warning("Please enter some text first.")
+    elif source_lang == target_lang:
+        st.warning("Please pick two different languages.")
+    else:
+        with st.spinner("Translating..."):
+            result = translate_text(
+                translate_input,
+                source_lang,
+                target_lang,
+                model,
+                tokenizer,
+            )
+        st.session_state.translate_output = result
+        st.rerun()
