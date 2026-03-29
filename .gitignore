@@ -14,6 +14,7 @@ __pycache__/
 # IDE / tooling
 .claude/
 .superpowers/
+.worktrees/
 .idea/
 .vscode/
 *.swp
