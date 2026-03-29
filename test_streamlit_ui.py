@@ -271,5 +271,3 @@ def test_model_load_failure_disables_summarize_button() -> None:
         at.run(timeout=60)
 
     assert at.tabs[1].button[0].disabled
-
-
