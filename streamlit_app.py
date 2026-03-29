@@ -118,43 +118,6 @@ def clean_model_output(decoded_text: str) -> str:
     return decoded_text.strip()
 
 
-def get_summary_config(length: str) -> str:
-    """Return the prompt instruction for the given summary length."""
-    configs = {
-        "Short": "Write a brief summary in 1-2 sentences",
-        "Medium": "Write a summary in a short paragraph",
-        "Long": "Write a detailed summary",
-    }
-    if length not in configs:
-        raise ValueError(f"Unknown summary length: {length!r}")
-    return configs[length]
-
-
-def select_summary_length(text: str) -> str:
-    """Select summary length based on input text size."""
-    if len(text) > 2000:
-        return "Long"
-    if len(text) >= 500:
-        return "Medium"
-    return "Short"
-
-
-def build_summarization_prompt(
-    text: str, summary_length: str, target_lang: str
-) -> list[dict[str, str]]:
-    """Build the chat messages list for a summarization request."""
-    length_instruction = get_summary_config(summary_length)
-    return [
-        {
-            "role": "user",
-            "content": (
-                f"{length_instruction} of the following text in {target_lang}. "
-                f"Output only the summary, nothing else.\n\n{text}"
-            ),
-        }
-    ]
-
-
 def _generate(
     messages: list[dict[str, str]],
     model: Any,
@@ -203,20 +166,6 @@ def translate_text(
 ) -> str:
     """Translate text using the model and return the cleaned result."""
     messages = build_translation_prompt(text, source_lang, target_lang)
-    return _generate(messages, model, tokenizer, temperature, max_tokens)
-
-
-def summarize_text(
-    text: str,
-    target_lang: str,
-    summary_length: str,
-    model: Any,
-    tokenizer: Any,
-    temperature: float = DEFAULT_TEMPERATURE,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
-) -> str:
-    """Summarize text using the model and return the cleaned result."""
-    messages = build_summarization_prompt(text, summary_length, target_lang)
     return _generate(messages, model, tokenizer, temperature, max_tokens)
 
 
