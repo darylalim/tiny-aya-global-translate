@@ -187,8 +187,7 @@ def load_model() -> tuple:
 
 # -- Main page ----------------------------------------------------------------
 
-st.title("Tiny Aya Water")
-st.markdown("Translate text — running privately on your computer.")
+st.title("Tiny Aya Water Translate")
 
 # -- Model loading ------------------------------------------------------------
 
