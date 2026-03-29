@@ -258,7 +258,7 @@ with col_output:
 
 # -- Translate button ---------------------------------------------------------
 
-if st.button("Translate", key="Translate", disabled=not model_loaded):
+if st.button("Translate", key="Translate", disabled=not model_loaded, type="primary"):
     if not translate_input.strip():
         st.warning("Please enter some text first.")
     elif source_lang == target_lang:
