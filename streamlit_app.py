@@ -230,15 +230,16 @@ with col_from:
         "From",
         LANGUAGES,
         key="source_lang",
+        label_visibility="collapsed",
     )
 with col_swap:
-    st.html("<div style='padding-top:1.8rem'></div>")
     st.button("⇄", key="⇄", on_click=swap_languages)
 with col_to:
     target_lang = st.selectbox(
         "To",
         LANGUAGES,
         key="target_lang",
+        label_visibility="collapsed",
     )
 
 # -- Side-by-side text panels -------------------------------------------------
