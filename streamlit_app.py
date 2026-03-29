@@ -180,6 +180,15 @@ def get_summary_config(length: str) -> str:
     return configs[length]
 
 
+def select_summary_length(text: str) -> str:
+    """Select summary length based on input text size."""
+    if len(text) > 2000:
+        return "Long"
+    if len(text) >= 500:
+        return "Medium"
+    return "Short"
+
+
 def build_summarization_prompt(
     text: str, summary_length: str, target_lang: str
 ) -> list[dict[str, str]]:

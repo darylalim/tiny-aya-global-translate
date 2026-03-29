@@ -13,6 +13,7 @@ from streamlit_app import (
     detect_device,
     get_summary_config,
     select_dtype,
+    select_summary_length,
     summarize_text,
     translate_text,
 )
@@ -206,6 +207,37 @@ def test_get_summary_config_long() -> None:
 def test_get_summary_config_invalid_raises() -> None:
     with pytest.raises(ValueError):
         get_summary_config("Extra Long")
+
+
+# -- select_summary_length -----------------------------------------------------
+
+
+def test_select_summary_length_short() -> None:
+    assert select_summary_length("Hello") == "Short"
+
+
+def test_select_summary_length_short_boundary() -> None:
+    assert select_summary_length("x" * 499) == "Short"
+
+
+def test_select_summary_length_medium_boundary() -> None:
+    assert select_summary_length("x" * 500) == "Medium"
+
+
+def test_select_summary_length_medium() -> None:
+    assert select_summary_length("x" * 1000) == "Medium"
+
+
+def test_select_summary_length_medium_upper_boundary() -> None:
+    assert select_summary_length("x" * 2000) == "Medium"
+
+
+def test_select_summary_length_long_boundary() -> None:
+    assert select_summary_length("x" * 2001) == "Long"
+
+
+def test_select_summary_length_long() -> None:
+    assert select_summary_length("x" * 5000) == "Long"
 
 
 # -- build_summarization_prompt ------------------------------------------------
