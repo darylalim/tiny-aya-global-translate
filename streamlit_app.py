@@ -344,27 +344,11 @@ with translate_tab:
             st.success(result)
 
 with summarize_tab:
-    st.markdown("**① Pick your options**")
-    col1, col2 = st.columns(2)
-    with col1:
-        summary_length = st.radio(
-            "Summary Length", ["Short", "Medium", "Long"], horizontal=True
-        )
-    with col2:
-        output_region = st.radio(
-            "Region",
-            list(LANGUAGE_GROUPS.keys()),
-            horizontal=True,
-            key="output_region",
-        )
-        output_languages = LANGUAGE_GROUPS[output_region]
-        output_lang = st.selectbox("Output Language", output_languages)
+    output_lang = st.selectbox("Output Language", LANGUAGES)
 
-    st.divider()
-    st.markdown("**② Type or paste your text**")
     summarize_input = st.text_area(
         "Text to summarize",
-        placeholder="e.g. Paste an article, email, or paragraph here",
+        placeholder="Paste an article, email, or paragraph here...",
         height=150,
     )
 
@@ -372,6 +356,7 @@ with summarize_tab:
         if not summarize_input.strip():
             st.warning("Please enter some text first.")
         else:
+            summary_length = select_summary_length(summarize_input)
             with st.spinner("Summarizing..."):
                 result = summarize_text(
                     summarize_input,
@@ -380,6 +365,4 @@ with summarize_tab:
                     model,
                     tokenizer,
                 )
-            st.divider()
-            st.markdown("**③ Summary**")
             st.success(result)

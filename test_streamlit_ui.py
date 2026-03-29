@@ -172,31 +172,6 @@ def test_translate_change_target_language(app: AppTest) -> None:
     assert app.tabs[0].selectbox[1].value == "Spanish"
 
 
-# -- Summarize tab: structure -------------------------------------------------
-
-
-def test_summarize_tab_has_choose_options_label(app: AppTest) -> None:
-    tab = app.tabs[1]
-    markdown_values = [m.value for m in tab.markdown]
-    assert any("① Pick your options" in v for v in markdown_values)
-
-
-def test_summarize_tab_has_enter_text_label(app: AppTest) -> None:
-    tab = app.tabs[1]
-    markdown_values = [m.value for m in tab.markdown]
-    assert any("② Type or paste your text" in v for v in markdown_values)
-
-
-def test_summarize_tab_has_divider(app: AppTest) -> None:
-    tab = app.tabs[1]
-    assert len(tab.divider) >= 1
-
-
-def test_summarize_tab_radio_default(app: AppTest) -> None:
-    tab = app.tabs[1]
-    assert tab.radio[0].value == "Short"
-
-
 def test_summarize_tab_output_language_default(app: AppTest) -> None:
     tab = app.tabs[1]
     assert tab.selectbox[0].value == "English"
@@ -205,28 +180,12 @@ def test_summarize_tab_output_language_default(app: AppTest) -> None:
 def test_summarize_tab_text_area_placeholder(app: AppTest) -> None:
     tab = app.tabs[1]
     text_area = tab.text_area[0]
-    assert text_area.placeholder == "e.g. Paste an article, email, or paragraph here"
+    assert text_area.placeholder == "Paste an article, email, or paragraph here..."
 
 
 def test_summarize_tab_button_exists(app: AppTest) -> None:
     tab = app.tabs[1]
     assert tab.button[0].label == "Summarize"
-
-
-def test_summarize_tab_output_region_default(app: AppTest) -> None:
-    tab = app.tabs[1]
-    assert tab.radio[1].value == "European"
-
-
-def test_summarize_output_region_filters_languages(app: AppTest) -> None:
-    """Switching output region to Asia-Pacific shows Asia-Pacific languages."""
-    app.tabs[1].radio[1].set_value("Asia-Pacific")
-    _rerun_with_mocks(app)
-
-    assert app.tabs[1].selectbox[0].value == "Chinese"
-
-
-# -- Summarize tab: interactions ----------------------------------------------
 
 
 def test_summarize_success_shows_result() -> None:
@@ -236,15 +195,6 @@ def test_summarize_success_shows_result() -> None:
     )
     success_values = [s.value for s in at.tabs[1].success]
     assert any("A brief summary." in str(v) for v in success_values)
-
-
-def test_summarize_success_shows_result_label() -> None:
-    """After a successful summarize the '③ Summary' label is shown."""
-    at = _run_inference_test(
-        tab_index=1, input_text="Some long text.", decode_result="A brief summary."
-    )
-    markdown_values = [m.value for m in at.tabs[1].markdown]
-    assert any("③ Summary" in v for v in markdown_values)
 
 
 def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
@@ -257,20 +207,12 @@ def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
     assert any("Please enter some text first" in str(v) for v in warning_values)
 
 
-def test_summarize_change_radio_to_long(app: AppTest) -> None:
-    """Changing the summary length radio to 'Long' updates its value."""
-    app.tabs[1].radio[0].set_value("Long")
-    _rerun_with_mocks(app)
-
-    assert app.tabs[1].radio[0].value == "Long"
-
-
 def test_summarize_change_output_language(app: AppTest) -> None:
-    """Changing the output language selectbox to 'French' updates its value."""
-    app.tabs[1].selectbox[0].set_value("French")
+    """Changing the output language selectbox updates its value."""
+    app.tabs[1].selectbox[0].set_value("Spanish")
     _rerun_with_mocks(app)
 
-    assert app.tabs[1].selectbox[0].value == "French"
+    assert app.tabs[1].selectbox[0].value == "Spanish"
 
 
 # -- Model load failure -------------------------------------------------------
