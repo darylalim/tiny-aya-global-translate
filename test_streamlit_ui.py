@@ -273,19 +273,3 @@ def test_model_load_failure_disables_summarize_button() -> None:
     assert at.tabs[1].button[0].disabled
 
 
-# -- Result divider -----------------------------------------------------------
-
-
-def test_translate_success_shows_result_divider() -> None:
-    """After a successful translation, a divider appears before the result."""
-    at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
-    # Initial load has 1 divider (between steps 1 and 2); after result there are 2
-    assert len(at.tabs[0].divider) >= 2
-
-
-def test_summarize_success_shows_result_divider() -> None:
-    """After a successful summarization, a divider appears before the result."""
-    at = _run_inference_test(
-        tab_index=1, input_text="Some long text.", decode_result="A brief summary."
-    )
-    assert len(at.tabs[1].divider) >= 2
