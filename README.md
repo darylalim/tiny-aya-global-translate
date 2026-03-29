@@ -4,9 +4,9 @@ Translate and summarize text across 43 languages — all running privately on yo
 
 ## Features
 
-- Guided step-by-step UI for translation and summarization
-- 43 European and Asia-Pacific languages, filterable by region
-- Controllable summary length (short/medium/long)
+- Compact UI for translation and summarization
+- 43 European and Asia-Pacific languages with type-to-search
+- Auto-determined summary length based on input size
 - Auto-detects GPU (NVIDIA/Apple Silicon) or CPU for best performance
 - Local inference — no API key required
 
