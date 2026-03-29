@@ -33,8 +33,8 @@ uv run ty check streamlit_app.py       # type check
 - Swap button (`⇄`) flips languages and moves output into input via `st.session_state`
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with Streamlit's built-in type-to-search
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
-- `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
-- `clean_model_output` is the shared output cleanup function for both tasks
+- `translate_text` handles both plain tensor and `BatchEncoding` returns from `apply_chat_template`
+- `clean_model_output` cleans decoded model output
 - Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`
 - Model loaded once via `@st.cache_resource` with `dtype` (not deprecated `torch_dtype`); inference runs under `torch.inference_mode()`
 - Config loaded from `.env` via python-dotenv with sensible defaults
