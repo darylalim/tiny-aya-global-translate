@@ -103,19 +103,6 @@ def _run_inference_test(tab_index: int, input_text: str, decode_result: str) -> 
     return at
 
 
-# -- Caption ------------------------------------------------------------------
-
-
-def test_caption_contains_powered_by(app: AppTest) -> None:
-    captions = [c.value for c in app.caption]
-    assert any("Powered by" in c for c in captions)
-
-
-def test_caption_contains_language_count(app: AppTest) -> None:
-    captions = [c.value for c in app.caption]
-    assert any("43 European and Asia-Pacific languages" in c for c in captions)
-
-
 # -- Translate tab: structure -------------------------------------------------
 
 
