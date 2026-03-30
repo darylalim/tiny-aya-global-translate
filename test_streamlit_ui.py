@@ -207,6 +207,20 @@ def test_change_target_language(app: AppTest) -> None:
     assert app.selectbox[1].value == "Spanish"
 
 
+# -- Character count -----------------------------------------------------------
+
+
+def test_character_count_shown(app: AppTest) -> None:
+    assert any("0 / 5,000" in c.value for c in app.caption)
+
+
+def test_character_count_updates(app: AppTest) -> None:
+    app.text_area[0].set_value("Hello")
+    _rerun_with_mocks(app)
+
+    assert any("5 / 5,000" in c.value for c in app.caption)
+
+
 # -- Model load failure --------------------------------------------------------
 
 

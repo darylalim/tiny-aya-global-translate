@@ -282,6 +282,7 @@ with col_input:
         key="translate_input",
         label_visibility="collapsed",
     )
+    st.caption(f"{len(translate_input):,} / 5,000")
 with col_output:
     st.text_area(
         "Output",
