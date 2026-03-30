@@ -248,35 +248,46 @@ with col_to:
         label_visibility="collapsed",
     )
 
-# -- Side-by-side text panels -------------------------------------------------
+# -- Translate button (logic runs before panels to allow state update) --------
 
-col_input, col_output = st.columns(2)
-with col_input:
-    translate_input = st.text_area(
-        "Input",
-        placeholder="Type or paste your text here...",
-        height=200,
-        key="translate_input",
-        label_visibility="collapsed",
-    )
-with col_output:
-    st.code(st.session_state.translate_output, language=None)
-
-# -- Translate button ---------------------------------------------------------
+_translate_warning: str | None = None
 
 if st.button("Translate", key="Translate", disabled=not model_loaded, type="primary"):
-    if not translate_input.strip():
-        st.warning("Please enter some text first.")
+    _current_input = st.session_state.translate_input
+    if not _current_input.strip():
+        _translate_warning = "Please enter some text first."
     elif source_lang == target_lang:
-        st.warning("Please pick two different languages.")
+        _translate_warning = "Please pick two different languages."
     else:
         with st.spinner("Translating..."):
             result = translate_text(
-                translate_input,
+                _current_input,
                 source_lang,
                 target_lang,
                 model,
                 tokenizer,
             )
         st.session_state.translate_output = result
-        st.rerun()
+
+if _translate_warning:
+    st.warning(_translate_warning)
+
+# -- Side-by-side text panels -------------------------------------------------
+
+col_input, col_output = st.columns(2)
+with col_input:
+    translate_input = st.text_area(
+        "Input",
+        height=300,
+        key="translate_input",
+        label_visibility="collapsed",
+    )
+with col_output:
+    st.text_area(
+        "Output",
+        height=300,
+        placeholder="Translation",
+        disabled=True,
+        key="translate_output",
+        label_visibility="collapsed",
+    )
