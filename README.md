@@ -4,7 +4,7 @@ Translate text across 43 languages — all running privately on your computer. P
 
 ## Features
 
-- Side-by-side translation with swap button and built-in copy
+- Side-by-side translation with swap, clear, and copy buttons
 - 43 European and Asia-Pacific languages with type-to-search
 - Auto-detects GPU (NVIDIA/Apple Silicon) or CPU for best performance
 - Local inference — no API key required
