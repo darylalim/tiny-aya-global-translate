@@ -29,7 +29,7 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- Side-by-side layout with language bar (`[From] [⇄] [To]`) above input text area and `st.code()` output (built-in copy button)
+- Side-by-side layout with language bar (`[From] [⇄] [To]`) above input text area and disabled `st.text_area()` output with "Translation" placeholder
 - Swap button (`⇄`, tertiary type) flips languages and moves output into input via `st.session_state`
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with collapsed labels and Streamlit's built-in type-to-search
 - Translate button uses `type="primary"` for visual prominence
