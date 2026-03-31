@@ -284,6 +284,22 @@ def test_copy_button_enabled_when_output_present() -> None:
     assert not at.button("copy").disabled
 
 
+def test_copy_button_click_no_errors() -> None:
+    """Clicking copy with output present should not produce errors."""
+    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    at.button("copy").click()
+    _rerun_with_mocks(at)
+
+    assert not at.exception
+
+
+# -- Output text area ----------------------------------------------------------
+
+
+def test_output_text_area_disabled(app: AppTest) -> None:
+    assert app.text_area[1].disabled
+
+
 # -- Model load failure --------------------------------------------------------
 
 
