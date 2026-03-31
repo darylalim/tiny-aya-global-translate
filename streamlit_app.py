@@ -347,7 +347,7 @@ with sub_download:
         "",
         key="download",
         icon=":material/download:",
-        data=st.session_state.translate_output or " ",
+        data=st.session_state.translate_output,
         file_name="translation.txt",
         mime="text/plain",
         disabled=not output_has_text,
