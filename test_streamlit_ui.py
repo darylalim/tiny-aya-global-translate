@@ -293,6 +293,16 @@ def test_copy_button_click_no_errors() -> None:
     assert not at.exception
 
 
+def test_copy_button_shows_toast() -> None:
+    """Clicking copy should show a 'Translation copied' toast."""
+    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    at.button("copy").click()
+    _rerun_with_mocks(at)
+
+    toast_values = [t.value for t in at.toast]
+    assert any("Translation copied" in str(v) for v in toast_values)
+
+
 # -- Output text area ----------------------------------------------------------
 
 
