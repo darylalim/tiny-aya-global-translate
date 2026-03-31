@@ -365,7 +365,7 @@ if st.session_state._do_translate:
     elif st.session_state.source_lang == st.session_state.target_lang:
         warning_slot.warning("Please pick two different languages.")
     else:
-        with st.spinner("Translating..."):
+        with warning_slot, st.spinner("Translating..."):
             result = translate_text(
                 _current_input,
                 st.session_state.source_lang,
