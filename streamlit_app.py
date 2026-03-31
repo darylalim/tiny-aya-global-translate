@@ -322,20 +322,22 @@ with sub_copy:
         disabled=not output_has_text,
     ):
         js_text = json.dumps(st.session_state.translate_output)
+        # Uses deprecated execCommand('copy') because the modern Clipboard API
+        # (navigator.clipboard.writeText) adds HTML to the macOS pasteboard,
+        # causing rich-text formatting when pasting into apps like Apple Notes.
         clipboard_slot.html(
             "<script>"
-            "(async()=>{"
-            "try{await navigator.clipboard.writeText("
-            f"{js_text}"
-            ")}catch{"
+            "(()=>{"
             "const t=document.createElement('textarea');"
             f"t.value={js_text};"
             "t.style.position='fixed';t.style.opacity='0';"
-            "document.body.appendChild(t);t.select();"
+            "document.body.appendChild(t);"
+            "t.focus();t.select();"
             "document.execCommand('copy');"
-            "document.body.removeChild(t)}"
+            "document.body.removeChild(t)"
             "})()"
-            "</script>"
+            "</script>",
+            unsafe_allow_javascript=True,
         )
 with sub_download:
     st.download_button(
