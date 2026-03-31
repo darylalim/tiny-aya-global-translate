@@ -174,11 +174,10 @@ import streamlit as st  # noqa: E402
 
 
 @st.cache_resource
-def load_model() -> tuple:
+def load_model(device: str) -> tuple:
     """Load tokenizer and model once, cached for the session lifetime."""
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    device = DEVICE if DEVICE != "auto" else detect_device()
     dtype = select_dtype(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=dtype)
@@ -193,8 +192,9 @@ st.title("Tiny Aya Water Translate")
 # -- Model loading ------------------------------------------------------------
 
 try:
-    with st.spinner("Loading model... this may take a few minutes on first run."):
-        tokenizer, model, _device, _dtype = load_model()
+    _resolved_device = DEVICE if DEVICE != "auto" else detect_device()
+    with st.spinner(f"Loading model on {_resolved_device.upper()}..."):
+        tokenizer, model, _device, _dtype = load_model(_resolved_device)
     model_loaded = True
 except Exception as e:
     st.error(f"Failed to load model: {e}")
