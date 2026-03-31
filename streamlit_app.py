@@ -216,7 +216,7 @@ if "_do_translate" not in st.session_state:
 
 
 def request_translate() -> None:
-    """Flag that a translation was requested (processed before widgets)."""
+    """Flag that a translation was requested (processed after controls row)."""
     st.session_state._do_translate = True
 
 
@@ -263,27 +263,9 @@ with col_to:
         label_visibility="collapsed",
     )
 
-# -- Process translation request (callback + flag, before output widget) ------
+# -- Warning slot (above panels) ----------------------------------------------
 
 warning_slot = st.container()
-
-if st.session_state._do_translate:
-    st.session_state._do_translate = False
-    _current_input = st.session_state.translate_input
-    if not _current_input.strip():
-        warning_slot.warning("Please enter some text first.")
-    elif st.session_state.source_lang == st.session_state.target_lang:
-        warning_slot.warning("Please pick two different languages.")
-    else:
-        with st.spinner("Translating..."):
-            result = translate_text(
-                _current_input,
-                st.session_state.source_lang,
-                st.session_state.target_lang,
-                model,
-                tokenizer,
-            )
-        st.session_state.translate_output = result
 
 # -- Side-by-side text panels -------------------------------------------------
 
@@ -302,7 +284,7 @@ with col_output:
         height=300,
         placeholder="Translation",
         disabled=True,
-        key="translate_output",
+        value=st.session_state.translate_output,
         label_visibility="collapsed",
     )
 
@@ -366,3 +348,24 @@ with sub_download:
         disabled=not output_has_text,
         type="tertiary",
     )
+
+# -- Process translation request (below controls) ----------------------------
+
+if st.session_state._do_translate:
+    st.session_state._do_translate = False
+    _current_input = st.session_state.translate_input
+    if not _current_input.strip():
+        warning_slot.warning("Please enter some text first.")
+    elif st.session_state.source_lang == st.session_state.target_lang:
+        warning_slot.warning("Please pick two different languages.")
+    else:
+        with st.spinner("Translating..."):
+            result = translate_text(
+                _current_input,
+                st.session_state.source_lang,
+                st.session_state.target_lang,
+                model,
+                tokenizer,
+            )
+        st.session_state.translate_output = result
+        st.rerun()  # Re-render to update the already-rendered output text_area
