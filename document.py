@@ -100,3 +100,38 @@ def rebuild_document_pptx(file_bytes: bytes, translations: list[str]) -> bytes:
     buf = io.BytesIO()
     prs.save(buf)
     return buf.getvalue()
+
+
+# -- XLSX ---------------------------------------------------------------------
+
+
+def extract_segments_xlsx(file_bytes: bytes) -> list[str]:
+    """Extract translatable text segments from an XLSX file."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(file_bytes))
+    segments: list[str] = []
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if isinstance(cell.value, str):
+                    segments.append(cell.value)
+    return segments
+
+
+def rebuild_document_xlsx(file_bytes: bytes, translations: list[str]) -> bytes:
+    """Rebuild an XLSX file with translated text replacing original segments."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(file_bytes))
+    idx = 0
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if isinstance(cell.value, str):
+                    if idx < len(translations):
+                        cell.value = translations[idx]
+                        idx += 1
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

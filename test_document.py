@@ -3,14 +3,17 @@ from __future__ import annotations
 import io
 
 from docx import Document
+from openpyxl import Workbook
 from pptx import Presentation
 from pptx.util import Inches
 
 from document import (
     extract_segments_docx,
     extract_segments_pptx,
+    extract_segments_xlsx,
     rebuild_document_docx,
     rebuild_document_pptx,
+    rebuild_document_xlsx,
 )
 
 
@@ -49,6 +52,17 @@ def _make_pptx(texts: list[str]) -> bytes:
         txBox.text_frame.paragraphs[0].text = text
     buf = io.BytesIO()
     prs.save(buf)
+    return buf.getvalue()
+
+
+def _make_xlsx(rows: list[list[str]]) -> bytes:
+    """Create a minimal XLSX with the given rows of string values."""
+    wb = Workbook()
+    ws = wb.active
+    for row in rows:
+        ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
     return buf.getvalue()
 
 
@@ -125,4 +139,42 @@ def test_rebuild_pptx_round_trip() -> None:
     segments = extract_segments_pptx(file_bytes)
     rebuilt = rebuild_document_pptx(file_bytes, segments)
     result = extract_segments_pptx(rebuilt)
+    assert result == original
+
+
+# -- extract_segments_xlsx -----------------------------------------------------
+
+
+def test_extract_xlsx_returns_cell_texts() -> None:
+    file_bytes = _make_xlsx([["Hello", "World"], ["Foo", "Bar"]])
+    segments = extract_segments_xlsx(file_bytes)
+    assert segments == ["Hello", "World", "Foo", "Bar"]
+
+
+def test_extract_xlsx_skips_non_string_cells() -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Hello", 42, None, "World"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    segments = extract_segments_xlsx(buf.getvalue())
+    assert segments == ["Hello", "World"]
+
+
+# -- rebuild_document_xlsx -----------------------------------------------------
+
+
+def test_rebuild_xlsx_replaces_text() -> None:
+    file_bytes = _make_xlsx([["Hello", "World"]])
+    rebuilt = rebuild_document_xlsx(file_bytes, ["Bonjour", "Monde"])
+    segments = extract_segments_xlsx(rebuilt)
+    assert segments == ["Bonjour", "Monde"]
+
+
+def test_rebuild_xlsx_round_trip() -> None:
+    original = ["Hello", "World", "Foo", "Bar"]
+    file_bytes = _make_xlsx([["Hello", "World"], ["Foo", "Bar"]])
+    segments = extract_segments_xlsx(file_bytes)
+    rebuilt = rebuild_document_xlsx(file_bytes, segments)
+    result = extract_segments_xlsx(rebuilt)
     assert result == original
