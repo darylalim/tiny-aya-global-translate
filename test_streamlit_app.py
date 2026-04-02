@@ -71,6 +71,10 @@ def test_clean_model_output_preserves_inner_whitespace() -> None:
     assert clean_model_output("  Hello   world  ") == "Hello   world"
 
 
+def test_clean_model_output_strips_end_response_token() -> None:
+    assert clean_model_output("Bonjour le monde<|END_RESPONSE|>") == "Bonjour le monde"
+
+
 # -- translate_text ------------------------------------------------------------
 
 
