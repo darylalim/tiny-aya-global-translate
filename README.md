@@ -1,10 +1,11 @@
 # Tiny Aya Water Translate
 
-Translate text across 43 languages — all running privately on your computer. Powered by [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water).
+Translate text and documents across 43 languages — all running privately on your computer. Powered by [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water).
 
 ## Features
 
-- Side-by-side translation with swap, clear, copy (plain-text), and download buttons
+- Side-by-side text translation with swap, clear, copy (plain-text), and download
+- Document translation for .docx, .pptx, .xlsx, and .pdf with formatting preserved
 - 43 European and Asia-Pacific languages with type-to-search
 - Auto-detects GPU (NVIDIA/Apple Silicon) or CPU for best performance
 - Local inference — no API key required
@@ -32,7 +33,7 @@ First run downloads the model (~7 GB). The app auto-detects the best available d
 ## Development
 
 ```bash
-uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
+uv run pytest test_streamlit_app.py test_streamlit_ui.py test_document.py -v  # run tests
 uv run ruff check --fix .              # lint
 uv run ruff format .                   # format
 uv run ty check streamlit_app.py       # type check
