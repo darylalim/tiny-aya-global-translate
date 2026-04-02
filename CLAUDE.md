@@ -13,6 +13,8 @@ Streamlit app for translating text across 43 European and Asia-Pacific languages
 - `streamlit_app.py` — single-file app: config, pure functions, Streamlit UI
 - `test_streamlit_app.py` — pytest unit tests for all pure functions
 - `test_streamlit_ui.py` — pytest UI tests for Streamlit interface
+- `document.py` — document processing: per-format extract/rebuild + coordinator
+- `test_document.py` — pytest unit tests for document processing
 - `.env.example` — configurable environment variables
 - `docs/` — design specs and implementation plans
 
@@ -20,7 +22,7 @@ Streamlit app for translating text across 43 European and Asia-Pacific languages
 
 ```bash
 uv run streamlit run streamlit_app.py   # run the app
-uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
+uv run pytest test_streamlit_app.py test_streamlit_ui.py test_document.py -v  # run tests
 uv run ruff check --fix .              # lint
 uv run ruff format .                   # format
 uv run ty check streamlit_app.py       # type check
@@ -46,3 +48,9 @@ uv run ty check streamlit_app.py       # type check
 - Model loaded once via `@st.cache_resource` with `dtype` (not deprecated `torch_dtype`); inference runs under `torch.inference_mode()`
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - License: CC-BY-NC (non-commercial use only)
+- Document translation uses `document.py` with per-format `extract_segments_*` / `rebuild_document_*` pairs and a `translate_document` coordinator that accepts a `translate_fn` callback
+- Supported formats: .docx (python-docx), .pptx (python-pptx), .xlsx (openpyxl), .pdf (pymupdf/fitz — best-effort)
+- `_replace_paragraph_text` helper shared by DOCX and PPTX: replaces text preserving first run's formatting
+- UI uses `st.tabs` with "Text" and "Documents" tabs; each tab has independent language selection (`source_lang`/`target_lang` vs `doc_source_lang`/`doc_target_lang`)
+- Documents tab: file uploader (10 MB limit) → Translate button → download button; uses callback+flag pattern (`_do_translate_doc`)
+- Downloaded document filename: `{target_lang}_{original_filename}`
