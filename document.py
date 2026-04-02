@@ -3,7 +3,6 @@ from __future__ import annotations
 import io
 from typing import Any
 
-
 # -- Helpers -------------------------------------------------------------------
 
 
@@ -59,4 +58,45 @@ def rebuild_document_docx(file_bytes: bytes, translations: list[str]) -> bytes:
         _replace_paragraph_text(para, translations[i])
     buf = io.BytesIO()
     doc.save(buf)
+    return buf.getvalue()
+
+
+# -- PPTX ---------------------------------------------------------------------
+
+
+def _iter_pptx_paragraphs(prs: Any) -> list[Any]:
+    """Return all paragraphs across all slides, shapes, and tables."""
+    paragraphs: list[Any] = []
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    paragraphs.append(para)
+            if shape.has_table:
+                for row in shape.table.rows:
+                    for cell in row.cells:
+                        for para in cell.text_frame.paragraphs:
+                            paragraphs.append(para)
+    return paragraphs
+
+
+def extract_segments_pptx(file_bytes: bytes) -> list[str]:
+    """Extract translatable text segments from a PPTX file."""
+    from pptx import Presentation
+
+    prs = Presentation(io.BytesIO(file_bytes))
+    return [para.text for para in _iter_pptx_paragraphs(prs)]
+
+
+def rebuild_document_pptx(file_bytes: bytes, translations: list[str]) -> bytes:
+    """Rebuild a PPTX file with translated text replacing original segments."""
+    from pptx import Presentation
+
+    prs = Presentation(io.BytesIO(file_bytes))
+    for i, para in enumerate(_iter_pptx_paragraphs(prs)):
+        if i >= len(translations):
+            break
+        _replace_paragraph_text(para, translations[i])
+    buf = io.BytesIO()
+    prs.save(buf)
     return buf.getvalue()

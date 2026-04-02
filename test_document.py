@@ -3,8 +3,15 @@ from __future__ import annotations
 import io
 
 from docx import Document
+from pptx import Presentation
+from pptx.util import Inches
 
-from document import extract_segments_docx, rebuild_document_docx
+from document import (
+    extract_segments_docx,
+    extract_segments_pptx,
+    rebuild_document_docx,
+    rebuild_document_pptx,
+)
 
 
 def _make_docx(paragraphs: list[str]) -> bytes:
@@ -28,6 +35,20 @@ def _make_docx_with_table(paragraphs: list[str], table_rows: list[list[str]]) ->
             table.rows[i].cells[j].text = cell_text
     buf = io.BytesIO()
     doc.save(buf)
+    return buf.getvalue()
+
+
+def _make_pptx(texts: list[str]) -> bytes:
+    """Create a minimal PPTX with one slide and one textbox per text."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank layout
+    for i, text in enumerate(texts):
+        txBox = slide.shapes.add_textbox(
+            Inches(1), Inches(0.5 + i * 1.5), Inches(5), Inches(1)
+        )
+        txBox.text_frame.paragraphs[0].text = text
+    buf = io.BytesIO()
+    prs.save(buf)
     return buf.getvalue()
 
 
@@ -70,4 +91,38 @@ def test_rebuild_docx_round_trip() -> None:
     segments = extract_segments_docx(file_bytes)
     rebuilt = rebuild_document_docx(file_bytes, segments)
     result = extract_segments_docx(rebuilt)
+    assert result == original
+
+
+# -- extract_segments_pptx -----------------------------------------------------
+
+
+def test_extract_pptx_returns_paragraph_texts() -> None:
+    file_bytes = _make_pptx(["Hello", "World"])
+    segments = extract_segments_pptx(file_bytes)
+    assert segments == ["Hello", "World"]
+
+
+def test_extract_pptx_includes_empty_paragraphs() -> None:
+    file_bytes = _make_pptx(["Hello", "", "World"])
+    segments = extract_segments_pptx(file_bytes)
+    assert segments == ["Hello", "", "World"]
+
+
+# -- rebuild_document_pptx -----------------------------------------------------
+
+
+def test_rebuild_pptx_replaces_text() -> None:
+    file_bytes = _make_pptx(["Hello", "World"])
+    rebuilt = rebuild_document_pptx(file_bytes, ["Bonjour", "Monde"])
+    segments = extract_segments_pptx(rebuilt)
+    assert segments == ["Bonjour", "Monde"]
+
+
+def test_rebuild_pptx_round_trip() -> None:
+    original = ["Hello", "World"]
+    file_bytes = _make_pptx(original)
+    segments = extract_segments_pptx(file_bytes)
+    rebuilt = rebuild_document_pptx(file_bytes, segments)
+    result = extract_segments_pptx(rebuilt)
     assert result == original
