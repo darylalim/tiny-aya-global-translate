@@ -406,3 +406,112 @@ with tab_text:
                 )
             st.session_state.translate_output = result
             st.rerun()  # Re-render to update the already-rendered output text_area
+
+# -- Documents tab ------------------------------------------------------------
+
+with tab_docs:
+    doc_col_from, doc_col_swap, doc_col_to = st.columns(
+        [10, 1, 10], vertical_alignment="center"
+    )
+    with doc_col_from:
+        st.selectbox(
+            "From",
+            LANGUAGES,
+            key="doc_source_lang",
+            label_visibility="collapsed",
+        )
+    with doc_col_swap:
+        st.button(
+            "",
+            key="doc_swap",
+            icon=":material/swap_horiz:",
+            on_click=swap_doc_languages,
+            use_container_width=True,
+            type="tertiary",
+            help="Swap languages",
+        )
+    with doc_col_to:
+        st.selectbox(
+            "To",
+            LANGUAGES,
+            key="doc_target_lang",
+            label_visibility="collapsed",
+        )
+
+    doc_warning_slot = st.container()
+
+    uploaded_file = st.file_uploader(
+        "Upload a document",
+        type=["docx", "pdf", "pptx", "xlsx"],
+        label_visibility="collapsed",
+    )
+
+    _file_too_large = (
+        uploaded_file is not None and uploaded_file.size > 10 * 1024 * 1024
+    )
+    if _file_too_large:
+        doc_warning_slot.warning("File too large. Maximum size is 10 MB.")
+
+    st.button(
+        "Translate",
+        key="TranslateDoc",
+        on_click=request_translate_doc,
+        disabled=not model_loaded or uploaded_file is None or _file_too_large,
+        type="primary",
+    )
+
+    if st.session_state._do_translate_doc:
+        st.session_state._do_translate_doc = False
+        if st.session_state.doc_source_lang == st.session_state.doc_target_lang:
+            doc_warning_slot.warning("Please pick two different languages.")
+        elif uploaded_file is None:
+            doc_warning_slot.warning("Please upload a file first.")
+        else:
+            from document import translate_document
+
+            def _translate_fn(text: str) -> str:
+                return translate_text(
+                    text,
+                    st.session_state.doc_source_lang,
+                    st.session_state.doc_target_lang,
+                    model,
+                    tokenizer,
+                )
+
+            with doc_warning_slot, st.spinner("Translating document..."):
+                result_bytes = translate_document(
+                    uploaded_file.getvalue(),
+                    uploaded_file.name,
+                    translate_fn=_translate_fn,
+                )
+            target = st.session_state.doc_target_lang
+            st.session_state.doc_translated_bytes = result_bytes
+            st.session_state.doc_translated_filename = f"{target}_{uploaded_file.name}"
+            st.rerun()
+
+    if st.session_state.doc_translated_bytes:
+        _mime_types = {
+            ".docx": (
+                "application/vnd.openxmlformats-officedocument"
+                ".wordprocessingml.document"
+            ),
+            ".pdf": "application/pdf",
+            ".pptx": (
+                "application/vnd.openxmlformats-officedocument"
+                ".presentationml.presentation"
+            ),
+            ".xlsx": (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+        }
+        _fname = st.session_state.doc_translated_filename
+        _ext = Path(_fname).suffix.lower()
+        st.download_button(
+            f"Download {_fname}",
+            key="doc_download",
+            data=st.session_state.doc_translated_bytes,
+            file_name=_fname,
+            mime=_mime_types.get(_ext, "application/octet-stream"),
+            type="primary",
+            icon=":material/download:",
+        )
