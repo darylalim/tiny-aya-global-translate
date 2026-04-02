@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 
+import fitz
 from docx import Document
 from openpyxl import Workbook
 from pptx import Presentation
@@ -9,9 +10,11 @@ from pptx.util import Inches
 
 from document import (
     extract_segments_docx,
+    extract_segments_pdf,
     extract_segments_pptx,
     extract_segments_xlsx,
     rebuild_document_docx,
+    rebuild_document_pdf,
     rebuild_document_pptx,
     rebuild_document_xlsx,
 )
@@ -63,6 +66,19 @@ def _make_xlsx(rows: list[list[str]]) -> bytes:
         ws.append(row)
     buf = io.BytesIO()
     wb.save(buf)
+    return buf.getvalue()
+
+
+def _make_pdf(texts: list[str]) -> bytes:
+    """Create a minimal PDF with one text block per string."""
+    doc = fitz.open()
+    page = doc.new_page()
+    for i, text in enumerate(texts):
+        rect = fitz.Rect(72, 72 + i * 50, 400, 72 + i * 50 + 40)
+        page.insert_textbox(rect, text, fontsize=12)
+    buf = io.BytesIO()
+    doc.save(buf)
+    doc.close()
     return buf.getvalue()
 
 
@@ -178,3 +194,38 @@ def test_rebuild_xlsx_round_trip() -> None:
     rebuilt = rebuild_document_xlsx(file_bytes, segments)
     result = extract_segments_xlsx(rebuilt)
     assert result == original
+
+
+# -- extract_segments_pdf ------------------------------------------------------
+
+
+def test_extract_pdf_returns_text_blocks() -> None:
+    file_bytes = _make_pdf(["Hello", "World"])
+    segments = extract_segments_pdf(file_bytes)
+    assert "Hello" in segments
+    assert "World" in segments
+
+
+def test_extract_pdf_skips_empty_blocks() -> None:
+    file_bytes = _make_pdf(["Hello", "World"])
+    segments = extract_segments_pdf(file_bytes)
+    assert all(s.strip() for s in segments)
+
+
+# -- rebuild_document_pdf ------------------------------------------------------
+
+
+def test_rebuild_pdf_inserts_translated_text() -> None:
+    file_bytes = _make_pdf(["Hello", "World"])
+    rebuilt = rebuild_document_pdf(file_bytes, ["Bonjour", "Monde"])
+    segments = extract_segments_pdf(rebuilt)
+    assert "Bonjour" in segments
+    assert "Monde" in segments
+
+
+def test_rebuild_pdf_preserves_segment_count() -> None:
+    file_bytes = _make_pdf(["Hello", "World"])
+    original_segments = extract_segments_pdf(file_bytes)
+    rebuilt = rebuild_document_pdf(file_bytes, ["Bonjour", "Monde"])
+    new_segments = extract_segments_pdf(rebuilt)
+    assert len(new_segments) == len(original_segments)

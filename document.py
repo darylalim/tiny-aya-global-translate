@@ -135,3 +135,66 @@ def rebuild_document_xlsx(file_bytes: bytes, translations: list[str]) -> bytes:
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+# -- PDF ----------------------------------------------------------------------
+
+
+def extract_segments_pdf(file_bytes: bytes) -> list[str]:
+    """Extract translatable text segments from a PDF file."""
+    import fitz
+
+    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    segments: list[str] = []
+    for page in doc:
+        blocks = page.get_text("dict")["blocks"]
+        for block in blocks:
+            if "lines" not in block:
+                continue
+            text = ""
+            for line in block["lines"]:
+                for span in line["spans"]:
+                    text += span["text"]
+            text = text.strip()
+            if text:
+                segments.append(text)
+    doc.close()
+    return segments
+
+
+def rebuild_document_pdf(file_bytes: bytes, translations: list[str]) -> bytes:
+    """Rebuild a PDF with translated text replacing original text blocks.
+
+    Best-effort: complex layouts may not reconstruct perfectly.
+    """
+    import fitz
+
+    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    idx = 0
+    for page in doc:
+        blocks = page.get_text("dict")["blocks"]
+        insertions: list[tuple[tuple[float, float], str, float]] = []
+        for block in blocks:
+            if "lines" not in block:
+                continue
+            text = ""
+            for line in block["lines"]:
+                for span in line["spans"]:
+                    text += span["text"]
+            text = text.strip()
+            if not text:
+                continue
+            first_span = block["lines"][0]["spans"][0]
+            origin: tuple[float, float] = first_span["origin"]
+            fontsize: float = first_span["size"]
+            page.add_redact_annot(fitz.Rect(block["bbox"]))
+            if idx < len(translations):
+                insertions.append((origin, translations[idx], fontsize))
+                idx += 1
+        page.apply_redactions()
+        for origin, trans_text, fontsize in insertions:
+            page.insert_text(origin, trans_text, fontsize=fontsize)
+    buf = io.BytesIO()
+    doc.save(buf)
+    doc.close()
+    return buf.getvalue()
