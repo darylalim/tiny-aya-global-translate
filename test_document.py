@@ -4,7 +4,7 @@ import io
 
 from docx import Document
 
-from document import extract_segments_docx
+from document import extract_segments_docx, rebuild_document_docx
 
 
 def _make_docx(paragraphs: list[str]) -> bytes:
@@ -17,9 +17,7 @@ def _make_docx(paragraphs: list[str]) -> bytes:
     return buf.getvalue()
 
 
-def _make_docx_with_table(
-    paragraphs: list[str], table_rows: list[list[str]]
-) -> bytes:
+def _make_docx_with_table(paragraphs: list[str], table_rows: list[list[str]]) -> bytes:
     """Create a DOCX with body paragraphs and a table."""
     doc = Document()
     for text in paragraphs:
@@ -57,8 +55,6 @@ def test_extract_docx_includes_table_text() -> None:
 
 
 # -- rebuild_document_docx -----------------------------------------------------
-
-from document import extract_segments_docx, rebuild_document_docx
 
 
 def test_rebuild_docx_replaces_text() -> None:
