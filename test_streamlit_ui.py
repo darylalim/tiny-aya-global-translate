@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import streamlit as st
-import torch
 from streamlit.testing.v1 import AppTest
 
 
@@ -15,70 +14,23 @@ def clear_st_cache() -> None:
 @pytest.fixture
 def app() -> AppTest:
     """Create a patched AppTest instance with mocked model loading."""
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
+    with patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
     return at
 
 
 def _rerun_with_mocks(app: AppTest) -> None:
-    """Re-run the app with simple mocks (no generate chain needed)."""
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
+    """Re-run the app with mocked model loading."""
+    with patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())):
         app.run(timeout=60)
 
 
-def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
-    """Return mocks configured for a successful _generate call."""
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-
-    final_model = mock_model.to.return_value.eval.return_value
-    final_model.device = torch.device("cpu")
-    final_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-
-    mock_tokenizer.apply_chat_template.return_value = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.decode.return_value = decode_result
-
-    return mock_tokenizer, mock_model
-
-
-def _run_inference_test(input_text: str, decode_result: str) -> AppTest:
+def _run_inference_test(input_text: str, generate_result: str) -> AppTest:
     """Build a fresh AppTest, enter text, click Translate, and return it."""
-    mock_tokenizer, mock_model = _make_inference_mocks(decode_result)
     with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("mlx_lm.generate", return_value=generate_result),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -116,16 +68,9 @@ def test_swap_flips_languages(app: AppTest) -> None:
 
 def test_swap_moves_output_to_input() -> None:
     """After translating, swap should move the output into the input field."""
-    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
     with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("mlx_lm.generate", return_value="Bonjour"),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -172,7 +117,7 @@ def test_translate_button_enabled_when_model_loaded(app: AppTest) -> None:
 
 
 def test_translate_success_shows_result() -> None:
-    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    at = _run_inference_test(input_text="Hello", generate_result="Bonjour")
     assert at.text_area[1].value == "Bonjour"
 
 
@@ -241,16 +186,9 @@ def test_clear_button_enabled_when_input_has_text(app: AppTest) -> None:
 
 def test_clear_button_clears_input_and_output() -> None:
     """After translating, clicking clear should clear both panels."""
-    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
     with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("mlx_lm.generate", return_value="Bonjour"),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -280,13 +218,13 @@ def test_copy_button_disabled_when_output_empty(app: AppTest) -> None:
 
 
 def test_copy_button_enabled_when_output_present() -> None:
-    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    at = _run_inference_test(input_text="Hello", generate_result="Bonjour")
     assert not at.button("copy").disabled
 
 
 def test_copy_button_click_no_errors() -> None:
     """Clicking copy with output present should not produce errors."""
-    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    at = _run_inference_test(input_text="Hello", generate_result="Bonjour")
     at.button("copy").click()
     _rerun_with_mocks(at)
 
@@ -295,7 +233,7 @@ def test_copy_button_click_no_errors() -> None:
 
 def test_copy_button_shows_toast() -> None:
     """Clicking copy should show a 'Translation copied' toast."""
-    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    at = _run_inference_test(input_text="Hello", generate_result="Bonjour")
     at.button("copy").click()
     _rerun_with_mocks(at)
 
@@ -314,16 +252,7 @@ def test_output_text_area_disabled(app: AppTest) -> None:
 
 
 def test_model_load_failure_shows_error() -> None:
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            side_effect=RuntimeError("download failed"),
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=MagicMock(),
-        ),
-    ):
+    with patch("mlx_lm.load", side_effect=RuntimeError("download failed")):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
@@ -332,16 +261,7 @@ def test_model_load_failure_shows_error() -> None:
 
 
 def test_model_load_failure_disables_translate_button() -> None:
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            side_effect=RuntimeError("download failed"),
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=MagicMock(),
-        ),
-    ):
+    with patch("mlx_lm.load", side_effect=RuntimeError("download failed")):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
@@ -364,16 +284,7 @@ def test_doc_translate_button_disabled_when_no_file(app: AppTest) -> None:
 
 
 def test_doc_translate_button_disabled_when_model_fails() -> None:
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            side_effect=RuntimeError("download failed"),
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=MagicMock(),
-        ),
-    ):
+    with patch("mlx_lm.load", side_effect=RuntimeError("download failed")):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
