@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import io
-from typing import Any
+from pathlib import Path
+from typing import Any, Callable
 
 # -- Helpers -------------------------------------------------------------------
 
@@ -198,3 +199,41 @@ def rebuild_document_pdf(file_bytes: bytes, translations: list[str]) -> bytes:
     doc.save(buf)
     doc.close()
     return buf.getvalue()
+
+
+# -- Coordinator ---------------------------------------------------------------
+
+_ExtractFn = Callable[[bytes], list[str]]
+_RebuildFn = Callable[[bytes, list[str]], bytes]
+
+HANDLERS: dict[str, tuple[_ExtractFn, _RebuildFn]] = {
+    ".docx": (extract_segments_docx, rebuild_document_docx),
+    ".pdf": (extract_segments_pdf, rebuild_document_pdf),
+    ".pptx": (extract_segments_pptx, rebuild_document_pptx),
+    ".xlsx": (extract_segments_xlsx, rebuild_document_xlsx),
+}
+
+
+def translate_document(
+    file_bytes: bytes,
+    filename: str,
+    translate_fn: Callable[[str], str],
+) -> bytes:
+    """Translate a document file, preserving formatting.
+
+    Args:
+        file_bytes: Raw file content.
+        filename: Original filename (used to determine format from extension).
+        translate_fn: A callable that takes a text string and returns its translation.
+
+    Returns:
+        The translated document as bytes in the same format.
+    """
+    ext = Path(filename).suffix.lower()
+    if ext not in HANDLERS:
+        msg = f"Unsupported file format: {ext}"
+        raise ValueError(msg)
+    extract_fn, rebuild_fn = HANDLERS[ext]
+    segments = extract_fn(file_bytes)
+    translations = [translate_fn(seg) if seg.strip() else seg for seg in segments]
+    return rebuild_fn(file_bytes, translations)

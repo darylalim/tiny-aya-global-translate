@@ -17,6 +17,7 @@ from document import (
     rebuild_document_pdf,
     rebuild_document_pptx,
     rebuild_document_xlsx,
+    translate_document,
 )
 
 
@@ -229,3 +230,40 @@ def test_rebuild_pdf_preserves_segment_count() -> None:
     rebuilt = rebuild_document_pdf(file_bytes, ["Bonjour", "Monde"])
     new_segments = extract_segments_pdf(rebuilt)
     assert len(new_segments) == len(original_segments)
+
+
+# -- translate_document --------------------------------------------------------
+
+
+def test_translate_document_dispatches_to_docx() -> None:
+    file_bytes = _make_docx(["Hello", "World"])
+    translated = translate_document(
+        file_bytes,
+        "test.docx",
+        translate_fn=lambda text: text.upper(),
+    )
+    segments = extract_segments_docx(translated)
+    assert segments == ["HELLO", "WORLD"]
+
+
+def test_translate_document_skips_empty_segments() -> None:
+    file_bytes = _make_docx(["Hello", "", "World"])
+    calls: list[str] = []
+
+    def mock_translate(text: str) -> str:
+        calls.append(text)
+        return text.upper()
+
+    translated = translate_document(
+        file_bytes, "test.docx", translate_fn=mock_translate
+    )
+    segments = extract_segments_docx(translated)
+    assert segments == ["HELLO", "", "WORLD"]
+    assert calls == ["Hello", "World"]
+
+
+def test_translate_document_unsupported_format() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="Unsupported file format"):
+        translate_document(b"data", "test.txt", translate_fn=lambda t: t)
